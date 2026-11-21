@@ -50,6 +50,20 @@ async function request(url) {
   return response.json();
 }
 
+async function testPort() {
+  const configured = process.env.AGENT_USAGE_TEST_WEBVIEW_PORT;
+  if (configured) {
+    const port = Number(configured);
+    assert.ok(Number.isInteger(port) && port >= 1024 && port <= 65535);
+    return port;
+  }
+  const reservation = createServer().listen(0, "127.0.0.1");
+  await new Promise((resolve, reject) => reservation.once("listening", resolve).once("error", reject));
+  const port = reservation.address().port;
+  await new Promise((resolve) => reservation.close(resolve));
+  return port;
+}
+
 try {
   const sessions = path.join(codex, "sessions");
   await mkdir(sessions, {recursive: true});
@@ -61,10 +75,7 @@ try {
   ];
   await writeFile(path.join(sessions, "rollout-usage-fixture.jsonl"), records.map((row) => JSON.stringify(row)).join("\n"));
 
-  const reservation = createServer().listen(0, "127.0.0.1");
-  await new Promise((resolve, reject) => reservation.once("listening", resolve).once("error", reject));
-  const port = reservation.address().port;
-  await new Promise((resolve) => reservation.close(resolve));
+  const port = await testPort();
   app = spawn(path.resolve(program), ["--state", state, "--codex-root", codex, "--gemini-root", path.join(state, "agy")], {
     windowsHide: true, stdio: "ignore", env: {
       ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --disable-background-networking`,

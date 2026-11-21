@@ -50,7 +50,27 @@ jobs:
             if ($process.ExitCode -ne 0) { throw "WebView2 setup exited with $($process.ExitCode)" }
           }
       - name: Launch and test the Windows app
-        run: node tests/smoke-windows.mjs .\dist\Agent-Usage-Desk-classic-windows-x64.exe
+        run: |
+          # Elevated runners use WebView2's per-app machine policy for automation arguments.
+          $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+          $listener.Start()
+          $port = $listener.LocalEndpoint.Port
+          $listener.Stop()
+          $env:AGENT_USAGE_TEST_WEBVIEW_PORT = "$port"
+          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+          if (!(Test-Path -LiteralPath $policy)) { New-Item -Path $policy -Force | Out-Null }
+          $previous = Get-ItemPropertyValue -LiteralPath $policy -Name 'DeskWindow.exe' -ErrorAction SilentlyContinue
+          try {
+            Set-ItemProperty -LiteralPath $policy -Name 'DeskWindow.exe' -Value "--remote-debugging-port=$port --remote-debugging-address=127.0.0.1"
+            node tests/smoke-windows.mjs .\dist\Agent-Usage-Desk-classic-windows-x64.exe
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            if ($null -eq $previous) {
+              Remove-ItemProperty -LiteralPath $policy -Name 'DeskWindow.exe' -ErrorAction SilentlyContinue
+            } else {
+              Set-ItemProperty -LiteralPath $policy -Name 'DeskWindow.exe' -Value $previous
+            }
+          }
       - name: Record the artifact checksum
         run: |
           $file = Get-Item -LiteralPath '.\dist\Agent-Usage-Desk-classic-windows-x64.exe'
