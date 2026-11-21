@@ -2,26 +2,26 @@
    while each arrangement gives the artwork its own space. */
 :root[data-theme="starlight"] {
   color-scheme: dark;
-  --page: #151217;
-  --surface: #241d25;
-  --ink: #f6eae2;
-  --muted: #c4b2bc;
-  --line: #51424d;
-  --soft-line: #3d303b;
-  --accent: #efc997;
-  --sidebar: #1d171f;
-  --codex: #edbd7c;
-  --agy: #c580a0;
-  --chart-axis: #c6b5bd;
-  --chart-focus: #392c39;
-  --chart-grid: #43353f;
-  --chart-baseline: #806c77;
-  --button-text: #291a20;
-  --button-hover: #f6daae;
-  --soft-fill: #2f2530;
-  --hover-fill: #352933;
-  --badge-fill: #42313d;
-  --entity-ink: #f3cfa9;
+  --page: #171419;
+  --surface: #231d24;
+  --ink: #f7ece4;
+  --muted: #c8b6b9;
+  --line: #4b3b45;
+  --soft-line: #382e37;
+  --accent: #ecc498;
+  --sidebar: #1c171e;
+  --codex: #e8b881;
+  --agy: #ba8ba4;
+  --chart-axis: #c3acb0;
+  --chart-focus: #382b34;
+  --chart-grid: #40323a;
+  --chart-baseline: #795e62;
+  --button-text: #291b20;
+  --button-hover: #f6d8b0;
+  --soft-fill: #2e252e;
+  --hover-fill: #352a32;
+  --badge-fill: #3e3039;
+  --entity-ink: #f1cca7;
   --warn-fill: #35291f;
   --warn-ink: #f2d4a3;
   --warn-line: #6b5339;
@@ -29,9 +29,10 @@
   --tip-ink: #302129;
   --side-text: #e3d0d5;
   --side-subtext: #ceaaa2;
-  --side-active: #382b36;
-  --side-line: #644c56;
-  --side-highlight: #e8b975;
+  --side-active: #342932;
+  --side-line: #5e4851;
+  --side-highlight: #deb28a;
+  --bow-lines: repeating-linear-gradient(to right, currentColor 0 1px, transparent 1px 4px);
 }
 
 :root[data-theme="flowers"] {
@@ -145,40 +146,66 @@
   content: ""; display: inline-block; width: 13px; height: 11px; margin-right: 7px; vertical-align: 1px;
 }
 
-/* Starlight. A wide stage crop holds the face, bow and violin at the right.
-   Four fine rules reappear as a small mark alongside the data headings. */
+/* The sloping edge echoes the bow. Parallel strings repeat on the data cards
+   at a smaller scale, with the brightest tones reserved for the illustration. */
+[data-theme="starlight"] body {
+  background: radial-gradient(820px 410px at 83% 0%, #3b282938, transparent);
+}
 [data-theme="starlight"] .top {
-  grid-template-columns: minmax(155px, 39%) minmax(0, 1fr); grid-template-areas: "heading ." "actions .";
-  background: #201720; border-color: #60444e; box-shadow: 0 10px 24px #0e0a1190;
+  --art-edge: 35%;
+  --art-slope: clamp(38px, 5.2vw, 76px);
+  grid-template-columns: minmax(168px, 35%) minmax(0, 1fr); grid-template-areas: "heading ." "actions .";
+  background: radial-gradient(ellipse at 22% 120%, #50303963, transparent 68%), #211820;
+  border-color: #5d444b; box-shadow: 0 9px 24px #0e0a115c;
 }
 [data-theme="starlight"] .hero-art {
-  inset: 0 0 0 23%; z-index: 0;
-  background: linear-gradient(90deg, #201720 0%, #201720f0 16%, #20172040 50%, transparent 72%),
-    linear-gradient(0deg, #2c1921a6, transparent 34%),
-    url("./local-art/starlight.png") center 40% / cover no-repeat;
+  inset: 0 0 0 var(--art-edge); z-index: 0;
+  clip-path: polygon(var(--art-slope) 0, 100% 0, 100% 100%, 0 100%);
+  background: linear-gradient(90deg, #211820af, #2118202e 31%, transparent 62%),
+    linear-gradient(0deg, #2617207d, transparent 36%),
+    url("./local-art/starlight.png") 61% 34% / cover no-repeat;
 }
 [data-theme="starlight"] .hero-ornament {
-  bottom: 22px; left: clamp(19px, 3.55vw, 49px); width: 49%; height: 13px;
-  background: repeating-linear-gradient(to bottom, #d7ae73b3 0 1px, transparent 1px 4px);
-  mask-image: linear-gradient(90deg, #000, #0009 65%, transparent);
+  inset: 0 auto 0 var(--art-edge); width: var(--art-slope);
+}
+[data-theme="starlight"] .hero-ornament::before,
+[data-theme="starlight"] .hero-ornament::after {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(calc(100% - 1px) 0, 100% 0, 1px 100%, 0 100%);
+  background: linear-gradient(#c99d7222, #efc59bbb 42%, #efc59b68 72%, #c99d7226);
+}
+[data-theme="starlight"] .hero-ornament::after {
+  transform: translateX(-9px);
+  opacity: .5;
 }
 [data-theme="starlight"] .top:not([data-view="overview"]) .hero-art { background-position: center, center, center 38%; }
-[data-theme="starlight"] .top:not([data-view="overview"]) .hero-ornament { bottom: 9px; height: 9px; opacity: .64; }
-[data-theme="starlight"] .hero-copy h1 { color: #fff3e2; font-weight: 630; letter-spacing: .025em; }
-[data-theme="starlight"] .top p { color: #ead0c2; }
-[data-theme="starlight"] .header-actions .quiet { background: #2e212a; border-color: #765c63; }
+[data-theme="starlight"] .hero-copy h1 {
+  color: #fff0df; font-family: "Microsoft YaHei UI", "Segoe UI Variable", sans-serif;
+  font-weight: 400; letter-spacing: .065em;
+}
+[data-theme="starlight"] .top p { color: #d7bcb1; }
+[data-theme="starlight"] .top p::before { border-radius: 1px; transform: rotate(45deg); }
+[data-theme="starlight"] .header-actions .quiet { background: #30232b; border-color: #624c54; }
 [data-theme="starlight"] .brand-art { border-radius: 9px; }
 [data-theme="starlight"] .brand-art::before {
-  content: ""; width: 19px; height: 13px; transform: rotate(-36deg);
-  background: repeating-linear-gradient(to bottom, currentColor 0 1px, transparent 1px 4px);
+  content: ""; width: 13px; height: 20px; transform: rotate(23deg);
+  background: var(--bow-lines);
 }
 [data-theme="starlight"] .kpis article.primary-kpi {
-  border-color: #8a624f; background: linear-gradient(124deg, #573039, #34232e 76%);
+  position: relative; isolation: isolate; overflow: hidden; border-color: #80594e;
+  background: radial-gradient(ellipse at 100% 125%, #88523750, transparent 76%), linear-gradient(118deg, #4b2d36, #2e222c 83%);
 }
-[data-theme="starlight"] .kpis .primary-kpi :is(span, small) { color: #ebd0c0; }
-[data-theme="starlight"] .kpis .primary-kpi strong { color: #f7d7a9; }
+[data-theme="starlight"] .kpis .primary-kpi::after {
+  content: ""; position: absolute; z-index: -1; right: 22px; top: -24px;
+  width: 22px; height: calc(100% + 48px); transform: rotate(23deg);
+  color: #e7b78437; background: var(--bow-lines); background-size: 13px 100%; background-repeat: no-repeat;
+  mask-image: linear-gradient(transparent 14%, #000 51%, transparent 89%);
+}
+[data-theme="starlight"] .kpis .primary-kpi :is(span, small) { color: #e8cfc1; }
+[data-theme="starlight"] .kpis .primary-kpi strong { color: #f8d8b1; }
 [data-theme="starlight"] .panel-heading h2::before {
-  background: repeating-linear-gradient(to bottom, #dcb483 0 1px, transparent 1px 3px); opacity: .82;
+  width: 13px; height: 10px; margin-right: 8px; transform: skew(-16deg);
+  color: #c59a76; background: var(--bow-lines);
 }
 [data-theme="starlight"] .dot.agy { transform: rotate(45deg); }
 
@@ -245,11 +272,16 @@
 
 @media (max-width: 855px) {
   :root:not([data-theme="classic"]) .top[data-view="overview"] { min-height: 198px; }
-  [data-theme="starlight"] .hero-ornament { bottom: 12px; }
+  [data-theme="starlight"] .top {
+    --art-edge: 40%; --art-slope: 44px;
+    grid-template-columns: minmax(190px, 38%) minmax(0, 1fr);
+  }
 }
 @media (max-width: 580px) {
-  [data-theme="starlight"] .top { grid-template-columns: minmax(175px, 43%) minmax(0, 1fr); }
-  [data-theme="starlight"] .hero-art { inset-inline-start: 26%; background-position: center, center, 79% 40%; }
+  [data-theme="starlight"] .top { --art-edge: 42%; --art-slope: 30px; grid-template-columns: minmax(175px, 43%) minmax(0, 1fr); }
+  [data-theme="starlight"] .header-actions { gap: 6px; }
+  [data-theme="starlight"] .header-actions button { padding-inline: 9px; }
+  [data-theme="starlight"] .hero-art { background-position: center, center, 78% 40%; }
   [data-theme="starlight"] .top:not([data-view="overview"]) .hero-art { background-position: center, center, 76% 37%; }
   [data-theme="flowers"] .top { grid-template-columns: minmax(0, 42%) minmax(0, 1fr); }
   [data-theme="flowers"] .hero-art { width: 43%; background-position: center, 57% 33%; }
