@@ -1,0 +1,263 @@
+/* The classic dashboard uses app.css. Illustrated themes share control roles,
+   while each arrangement gives the artwork its own space. */
+:root[data-theme="starlight"] {
+  color-scheme: dark;
+  --page: #151217;
+  --surface: #241d25;
+  --ink: #f6eae2;
+  --muted: #c4b2bc;
+  --line: #51424d;
+  --soft-line: #3d303b;
+  --accent: #efc997;
+  --sidebar: #1d171f;
+  --codex: #edbd7c;
+  --agy: #c580a0;
+  --chart-axis: #c6b5bd;
+  --chart-focus: #392c39;
+  --chart-grid: #43353f;
+  --chart-baseline: #806c77;
+  --button-text: #291a20;
+  --button-hover: #f6daae;
+  --soft-fill: #2f2530;
+  --hover-fill: #352933;
+  --badge-fill: #42313d;
+  --entity-ink: #f3cfa9;
+  --warn-fill: #35291f;
+  --warn-ink: #f2d4a3;
+  --warn-line: #6b5339;
+  --tip-fill: #f0dcc1;
+  --tip-ink: #302129;
+  --side-text: #e3d0d5;
+  --side-subtext: #ceaaa2;
+  --side-active: #382b36;
+  --side-line: #644c56;
+  --side-highlight: #e8b975;
+}
+
+:root[data-theme="flowers"] {
+  --page: #f4ece5;
+  --surface: #fffbf6;
+  --ink: #31252b;
+  --muted: #67565c;
+  --line: #dac9c4;
+  --soft-line: #ebdcd7;
+  --accent: #84394b;
+  --sidebar: #482630;
+  --codex: #ad4a59;
+  --agy: #426861;
+  --chart-axis: #6d535a;
+  --chart-focus: #f2e2dc;
+  --chart-grid: #eadcd5;
+  --chart-baseline: #c8acae;
+  --button-text: #fff6ef;
+  --button-hover: #6d2c3e;
+  --soft-fill: #f4e8e0;
+  --hover-fill: #f8eee8;
+  --badge-fill: #f5e1dc;
+  --entity-ink: #82374a;
+  --warn-fill: #fbefe1;
+  --warn-ink: #6e432f;
+  --warn-line: #dec3b0;
+  --tip-fill: #4b2933;
+  --tip-ink: #fff4ec;
+  --side-text: #f4e1dd;
+  --side-subtext: #e4bdb9;
+  --side-active: #663b46;
+  --side-line: #81535d;
+  --side-highlight: #edbb9d;
+}
+
+:root:is([data-theme="starlight"], [data-theme="flowers"]) {
+  --radius: 13px;
+}
+
+:root:not([data-theme="classic"]) :where(button, input, select, canvas, summary):focus-visible {
+  outline-color: var(--accent);
+}
+:root:not([data-theme="classic"]) .sidebar :focus-visible { outline-color: var(--side-highlight); }
+:root:not([data-theme="classic"]) .brand img { display: none; }
+:root:not([data-theme="classic"]) .brand strong { color: var(--side-text); }
+:root:not([data-theme="classic"]) .brand small,
+:root:not([data-theme="classic"]) .appearance-label .glyph,
+:root:not([data-theme="classic"]) .nav-item .glyph { color: var(--side-subtext); }
+:root:not([data-theme="classic"]) .sidebar,
+:root:not([data-theme="classic"]) .nav-item,
+:root:not([data-theme="classic"]) .sidebar-quit,
+:root:not([data-theme="classic"]) .appearance { color: var(--side-text); }
+:root:not([data-theme="classic"]) .nav-item:hover,
+:root:not([data-theme="classic"]) .sidebar-quit:hover:not(:disabled),
+:root:not([data-theme="classic"]) .nav-item.active,
+:root:not([data-theme="classic"]) .appearance select {
+  background: var(--side-active); color: var(--side-text); border-color: var(--side-line);
+}
+:root:not([data-theme="classic"]) .nav-item.active::before { background: var(--side-highlight); }
+:root:not([data-theme="classic"]) .scope { border-color: var(--side-line); }
+:root:not([data-theme="classic"]) .brand-art {
+  position: relative; display: grid; place-items: center; flex: none; width: 36px; height: 36px;
+  color: var(--side-highlight); background: var(--side-active); border: 1px solid var(--side-line);
+}
+
+:root:not([data-theme="classic"]) .quiet:not(.sidebar-quit),
+:root:not([data-theme="classic"]) .select-field,
+:root:not([data-theme="classic"]) .select-field :is(select, input),
+:root:not([data-theme="classic"]) #search {
+  background: var(--surface); border-color: var(--line);
+}
+:root:not([data-theme="classic"]) .quiet:not(.sidebar-quit):hover:not(:disabled),
+:root:not([data-theme="classic"]) tbody tr:hover { background: var(--hover-fill); }
+:root:not([data-theme="classic"]) .select-field:focus-within { border-color: var(--accent); }
+:root:not([data-theme="classic"]) .solid { background: var(--accent); border-color: var(--accent); color: var(--button-text); }
+:root:not([data-theme="classic"]) .solid:hover:not(:disabled) { background: var(--button-hover); }
+:root:not([data-theme="classic"]) :is(.source-picker, .metric-picker) { background: var(--soft-fill); border-color: var(--line); }
+:root:not([data-theme="classic"]) :is(.source-picker, .metric-picker) button { color: var(--muted); }
+:root:not([data-theme="classic"]) :is(.source-picker, .metric-picker) button:hover { color: var(--ink); }
+:root:not([data-theme="classic"]) :is(.source-picker, .metric-picker) button.active {
+  background: var(--surface); border-color: var(--line); color: var(--ink);
+}
+:root:not([data-theme="classic"]) :is(.kpis b, th) {
+  color: var(--muted); background: var(--soft-fill); border-color: var(--soft-line);
+}
+:root:not([data-theme="classic"]) .kpis b { background: var(--badge-fill); }
+:root:not([data-theme="classic"]) progress,
+:root:not([data-theme="classic"]) progress::-webkit-progress-bar { background: var(--soft-fill); }
+:root:not([data-theme="classic"]) .chart-tooltip { background: var(--tip-fill); color: var(--tip-ink); border-color: var(--line); }
+:root:not([data-theme="classic"]) .entity { color: var(--entity-ink); }
+:root:not([data-theme="classic"]) .entity:hover { color: var(--ink); }
+:root:not([data-theme="classic"]) :is(.health-warning, .partial) { color: var(--warn-ink); }
+:root:not([data-theme="classic"]) .notice {
+  background: var(--warn-fill); color: var(--warn-ink); border-color: var(--warn-line);
+}
+
+:root:not([data-theme="classic"]) .top {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; align-content: center; align-items: start; justify-content: stretch;
+  row-gap: 16px; min-height: 156px; padding: 23px clamp(19px, 3.55vw, 49px);
+  margin-bottom: 17px; border: 1px solid var(--line); border-radius: var(--radius);
+}
+:root:not([data-theme="classic"]) .top[data-view="overview"] { min-height: 226px; }
+:root:not([data-theme="classic"]) .hero-art,
+:root:not([data-theme="classic"]) .hero-ornament { position: absolute; display: block; pointer-events: none; }
+:root:not([data-theme="classic"]) .hero-copy { grid-area: heading; position: relative; z-index: 1; min-width: 0; }
+:root:not([data-theme="classic"]) .header-actions { grid-area: actions; position: relative; z-index: 1; justify-content: flex-start; }
+:root:not([data-theme="classic"]) .top p { margin-top: 8px; }
+:root:not([data-theme="classic"]) .top p::before { margin-bottom: 1px; background: var(--accent); }
+:root:not([data-theme="classic"]) .panel-heading h2::before {
+  content: ""; display: inline-block; width: 13px; height: 11px; margin-right: 7px; vertical-align: 1px;
+}
+
+/* Starlight. A wide stage crop holds the face, bow and violin at the right.
+   Four fine rules reappear as a small mark alongside the data headings. */
+[data-theme="starlight"] .top {
+  grid-template-columns: minmax(155px, 39%) minmax(0, 1fr); grid-template-areas: "heading ." "actions .";
+  background: #201720; border-color: #60444e; box-shadow: 0 10px 24px #0e0a1190;
+}
+[data-theme="starlight"] .hero-art {
+  inset: 0 0 0 23%; z-index: 0;
+  background: linear-gradient(90deg, #201720 0%, #201720f0 16%, #20172040 50%, transparent 72%),
+    linear-gradient(0deg, #2c1921a6, transparent 34%),
+    url("./local-art/starlight.png") center 40% / cover no-repeat;
+}
+[data-theme="starlight"] .hero-ornament {
+  bottom: 22px; left: clamp(19px, 3.55vw, 49px); width: 49%; height: 13px;
+  background: repeating-linear-gradient(to bottom, #d7ae73b3 0 1px, transparent 1px 4px);
+  mask-image: linear-gradient(90deg, #000, #0009 65%, transparent);
+}
+[data-theme="starlight"] .top:not([data-view="overview"]) .hero-art { background-position: center, center, center 38%; }
+[data-theme="starlight"] .top:not([data-view="overview"]) .hero-ornament { bottom: 9px; height: 9px; opacity: .64; }
+[data-theme="starlight"] .hero-copy h1 { color: #fff3e2; font-weight: 630; letter-spacing: .025em; }
+[data-theme="starlight"] .top p { color: #ead0c2; }
+[data-theme="starlight"] .header-actions .quiet { background: #2e212a; border-color: #765c63; }
+[data-theme="starlight"] .brand-art { border-radius: 9px; }
+[data-theme="starlight"] .brand-art::before {
+  content: ""; width: 19px; height: 13px; transform: rotate(-36deg);
+  background: repeating-linear-gradient(to bottom, currentColor 0 1px, transparent 1px 4px);
+}
+[data-theme="starlight"] .kpis article.primary-kpi {
+  border-color: #8a624f; background: linear-gradient(124deg, #573039, #34232e 76%);
+}
+[data-theme="starlight"] .kpis .primary-kpi :is(span, small) { color: #ebd0c0; }
+[data-theme="starlight"] .kpis .primary-kpi strong { color: #f7d7a9; }
+[data-theme="starlight"] .panel-heading h2::before {
+  background: repeating-linear-gradient(to bottom, #dcb483 0 1px, transparent 1px 3px); opacity: .82;
+}
+[data-theme="starlight"] .dot.agy { transform: rotate(45deg); }
+
+/* Flowers. The pale crescent in the original repeats in the inset edge,
+   the outline on the paper and the source panel's curved watermark. */
+[data-theme="flowers"] .top {
+  grid-template-columns: minmax(0, 49%) minmax(0, 1fr); grid-template-areas: ". heading" ". actions";
+  column-gap: clamp(14px, 2.25vw, 32px);
+  background: linear-gradient(104deg, #f0e0d6, #fff6eb 76%);
+  border-radius: 13px 24px 13px 13px; border-color: #d5bcb5;
+}
+[data-theme="flowers"] .hero-art {
+  inset: 0 auto 0 0; width: 49%; z-index: 0;
+  border-radius: 0 37% 39% 0 / 0 88% 96% 0;
+  border-right: 3px solid #b18470;
+  background: linear-gradient(105deg, #3e192a24, transparent 60%),
+    url("./local-art/flowers.png") 50% 18% / cover no-repeat;
+  outline: 1px solid #d6b8a4; outline-offset: 5px;
+}
+[data-theme="flowers"] .top:not([data-view="overview"]) .hero-art { background-position: center, 50% 35%; }
+[data-theme="flowers"] .hero-ornament {
+  z-index: 0; right: -39px; top: -131px; width: 272px; height: 272px;
+  border-radius: 50%; border: 1px solid #b4837042; box-shadow: 0 0 0 9px #d4b09828;
+}
+[data-theme="flowers"] .hero-copy h1 {
+  color: #5a2b3b; font-family: Georgia, "Songti SC", "SimSun", serif;
+  font-weight: 700; letter-spacing: .045em;
+}
+[data-theme="flowers"] .top p { color: #634650; }
+[data-theme="flowers"] .brand-art { border-radius: 50%; }
+[data-theme="flowers"] .brand-art::before,
+[data-theme="flowers"] .panel-heading h2::before {
+  content: ""; width: 9px; height: 9px; border-radius: 0 64% 4% 64%; transform: rotate(20deg);
+  background: currentColor;
+}
+[data-theme="flowers"] .brand-art::before {
+  background: transparent; border: 1px solid;
+  box-shadow: -5px 5px 0 -2px currentColor, 5px -5px 0 -2px currentColor;
+}
+[data-theme="flowers"] .panel-heading h2::before { color: #9f5160; margin-right: 10px; }
+[data-theme="flowers"] .kpis article.primary-kpi {
+  position: relative; isolation: isolate; overflow: hidden; border-color: #8a4d58;
+  border-radius: 11px 24px 11px 11px; background: linear-gradient(126deg, #632e40 27%, #854759);
+}
+[data-theme="flowers"] .kpis .primary-kpi::after {
+  content: ""; position: absolute; z-index: -1; right: -20px; bottom: -49px; width: 108px; height: 108px;
+  border: 1px solid #f1bda78c; border-radius: 50%; box-shadow: -8px -3px 0 -5px #f1bda754;
+}
+[data-theme="flowers"] .kpis .primary-kpi :is(span, small) { color: #f8dfd6; }
+[data-theme="flowers"] .kpis .primary-kpi strong { color: #fff4eb; }
+[data-theme="flowers"] .dot.agy { border-radius: 0 64% 4% 64%; transform: rotate(15deg); }
+[data-theme="flowers"] .sources {
+  position: relative; isolation: isolate; overflow: hidden; border-radius: 14px 25px 14px 14px;
+}
+[data-theme="flowers"] .sources::after {
+  content: ""; position: absolute; z-index: -1; right: -42px; bottom: -82px; width: 174px; height: 174px;
+  border: 1px solid #dcc4b7; border-radius: 50%; box-shadow: -7px -6px 0 -3px #f1e1d7;
+}
+@media (min-width: 1091px) {
+  [data-theme="flowers"] .overview-grid { grid-template-columns: minmax(233px, 1fr) minmax(0, 2.5fr); }
+  [data-theme="flowers"] .sources { grid-row: 1; grid-column: 1; }
+  [data-theme="flowers"] .trend { grid-row: 1; grid-column: 2; }
+}
+
+@media (max-width: 855px) {
+  :root:not([data-theme="classic"]) .top[data-view="overview"] { min-height: 198px; }
+  [data-theme="starlight"] .hero-ornament { bottom: 12px; }
+}
+@media (max-width: 580px) {
+  [data-theme="starlight"] .top { grid-template-columns: minmax(175px, 43%) minmax(0, 1fr); }
+  [data-theme="starlight"] .hero-art { inset-inline-start: 26%; background-position: center, center, 79% 40%; }
+  [data-theme="starlight"] .top:not([data-view="overview"]) .hero-art { background-position: center, center, 76% 37%; }
+  [data-theme="flowers"] .top { grid-template-columns: minmax(0, 42%) minmax(0, 1fr); }
+  [data-theme="flowers"] .hero-art { width: 43%; background-position: center, 57% 33%; }
+  [data-theme="flowers"] .top:not([data-view="overview"]) .hero-art { background-position: center, 57% 34%; }
+}
+@media (max-width: 430px) {
+  :root:not([data-theme="classic"]) .top { gap: 10px; padding: 17px 13px; }
+  :root:not([data-theme="classic"]) .top h1 { font-size: 26px; }
+  :root:not([data-theme="classic"]) .header-actions { gap: 4px; }
+  :root:not([data-theme="classic"]) .top button { font-size: 12px; padding-inline: 6px; min-height: 32px; }
+}

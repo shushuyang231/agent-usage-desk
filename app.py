@@ -20,11 +20,17 @@ from engine import UsageIndex, json_data
 APP = "Agent Usage Desk"
 UI = Path(__file__).resolve().parent / "ui"
 HOST = UI.parent / "host" / "DeskWindow.exe"
+THEME_ART = {
+    "starlight": "local-art/starlight.png",
+    "flowers": "local-art/flowers.png",
+}
 ASSETS = {
     "index.html": "text/html; charset=utf-8",
     "app.css": "text/css; charset=utf-8",
+    "themes.css": "text/css; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
     "icon.png": "image/png",
+    **dict.fromkeys(THEME_ART.values(), "image/png"),
 }
 
 
@@ -79,7 +85,19 @@ def one_instance(directory):
         lock.close()
 
 
-def handler_for(index, prefix):
+def load_theme(preference, themes):
+    try:
+        theme = preference.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError):
+        return "classic"
+    return theme if theme in themes else "classic"
+
+
+def handler_for(index, prefix, preference):
+    themes = ("classic", *(name for name, image in THEME_ART.items() if (UI / image).is_file()))
+    theme_route = prefix + "api/theme/"
+    preference_lock = threading.Lock()
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_):
             pass
@@ -103,7 +121,15 @@ def handler_for(index, prefix):
             elif target in ASSETS:
                 file = UI / target
                 if file.is_file():
-                    self.reply(file.read_bytes(), ASSETS[target])
+                    content = file.read_bytes()
+                    if target == "index.html":
+                        theme = load_theme(preference, themes)
+                        content = content.replace(
+                            b'data-theme="classic"', f'data-theme="{theme}"'.encode("ascii"), 1,
+                        ).replace(
+                            b'data-themes="classic"', f'data-themes="{" ".join(themes)}"'.encode("ascii"), 1,
+                        )
+                    self.reply(content, ASSETS[target])
                 else:
                     self.send_error(404)
             else:
@@ -123,6 +149,19 @@ def handler_for(index, prefix):
                 self.reply(b'{"ok":true}', "application/json")
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
                 return
+            elif self.path.startswith(theme_route):
+                theme = self.path[len(theme_route):]
+                if theme not in themes:
+                    self.send_error(404)
+                    return
+                try:
+                    with preference_lock:
+                        pending = preference.with_suffix(".tmp")
+                        pending.write_text(theme + "\n", encoding="ascii")
+                        pending.replace(preference)
+                except OSError:
+                    self.send_error(500)
+                    return
             else:
                 self.send_error(404)
                 return
@@ -177,7 +216,8 @@ def main():
             return
         index = UsageIndex(state, codex.resolve(), gemini.resolve())
         prefix = "/" + secrets.token_urlsafe(24) + "/"
-        with ThreadingHTTPServer(("127.0.0.1", 0), handler_for(index, prefix)) as server:
+        preference = state / "appearance.txt"
+        with ThreadingHTTPServer(("127.0.0.1", 0), handler_for(index, prefix, preference)) as server:
             url = f"http://127.0.0.1:{server.server_port}{prefix}"
             active_file.write_text(url, encoding="utf-8")
             try:

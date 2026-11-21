@@ -8,8 +8,8 @@ const TAB = {
   sessions: ["会话用量", "会话明细", "会话"],
 };
 const SOURCES = { codex: "Codex", agy: "Antigravity" };
-const THEME = getComputedStyle(document.documentElement);
-const COLORS = { codex: THEME.getPropertyValue("--codex").trim(), agy: THEME.getPropertyValue("--agy").trim() };
+const root = document.documentElement;
+const chartColors = {};
 const CHART_TYPE = '"Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif';
 const COLUMNS = {
   day: 0, source: 1, model: 2, project: 3, session: 4, fresh: 5, cache: 6,
@@ -129,6 +129,7 @@ function costLabel(summary) {
 function render() {
   syncFilters();
   const [title, details, noun] = TAB[state.tab];
+  $("view-hero").dataset.view = state.tab;
   $("view-title").textContent = title;
   $("table-title").textContent = details;
   $("entity-head").textContent = noun;
@@ -338,7 +339,7 @@ function drawChart() {
   const sums = series.map((item) => item.codex[field] + item.agy[field]);
   const maximum = Math.max(0, ...sums);
   if (!maximum) {
-    ctx.fillStyle = "#52655c";
+    ctx.fillStyle = chartColors["chart-axis"];
     ctx.textAlign = "center";
     ctx.font = "13px " + CHART_TYPE;
     ctx.fillText(state.running && !state.snapshot ? "正在扫描日志…" : field === "cost" ? "当前范围没有可绘制的估算费用" : "当前范围没有用量", width / 2, height / 2);
@@ -354,16 +355,16 @@ function drawChart() {
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
   if (state.focus >= 0) {
-    ctx.fillStyle = "#eff5ef";
+    ctx.fillStyle = chartColors["chart-focus"];
     ctx.fillRect(left + state.focus * stride, top, stride, bottom - top);
   }
   for (let i = 0; i <= 4; i++) {
     const value = increment * i;
     const pos = y(value);
     const physicalScale = pixelHeight / height;
-    ctx.fillStyle = i === 0 ? "#cbd8ce" : "#e7ede7";
+    ctx.fillStyle = chartColors[i === 0 ? "chart-baseline" : "chart-grid"];
     ctx.fillRect(left, Math.floor(pos * physicalScale) / physicalScale, span, 1 / physicalScale);
-    ctx.fillStyle = "#52655c";
+    ctx.fillStyle = chartColors["chart-axis"];
     ctx.fillText(field === "cost" ? "$" + Number(value.toPrecision(3)) : compact(Math.round(value)), left - 8, pos);
   }
   const shownLabels = Math.max(2, Math.min(series.length, Math.floor(span / 76)));
@@ -377,7 +378,7 @@ function drawChart() {
     for (const [index, id] of visibleSeries.entries()) {
       const point = series[i][id];
       const value = point[field];
-      ctx.fillStyle = COLORS[id];
+      ctx.fillStyle = chartColors[id];
       const barHeight = Math.max(1, y(sum) - y(sum + value));
       const radius = index === visibleSeries.length - 1 ? Math.min(3, barWidth / 2, barHeight / 2) : 0;
       ctx.beginPath();
@@ -386,7 +387,7 @@ function drawChart() {
       sum += value;
     }
     if (labeled.has(i)) {
-      ctx.fillStyle = "#52655c";
+      ctx.fillStyle = chartColors["chart-axis"];
       ctx.fillText(series[i].date.slice(5), Math.max(left + 13, Math.min(right - 13, x)), bottom + 16);
     }
   }
@@ -437,6 +438,35 @@ async function request(path, method = "GET") {
   if (!response.ok) throw new Error("HTTP " + response.status);
   return response.json();
 }
+
+function applyAppearance(theme) {
+  root.dataset.theme = theme;
+  const style = getComputedStyle(root);
+  for (const name of ["codex", "agy", "chart-axis", "chart-focus", "chart-grid", "chart-baseline"]) {
+    chartColors[name] = style.getPropertyValue("--" + name).trim();
+  }
+  window.chrome?.webview?.postMessage("theme:" + theme);
+  drawChart();
+}
+
+const themePicker = $("theme");
+const availableThemes = new Set(root.dataset.themes.split(" "));
+for (const option of [...themePicker.options]) {
+  if (!availableThemes.has(option.value)) option.remove();
+}
+themePicker.value = root.dataset.theme;
+$("appearance").hidden = availableThemes.size < 2;
+applyAppearance(themePicker.value);
+let themeSave = Promise.resolve();
+themePicker.addEventListener("change", () => {
+  const theme = themePicker.value;
+  if (!availableThemes.has(theme)) return;
+  applyAppearance(theme);
+  $("appearance-status").textContent = "";
+  themeSave = themeSave.then(() => request("theme/" + theme, "POST")).catch(() => {
+    if (themePicker.value === theme) $("appearance-status").textContent = "主题已切换，未能保存为默认。";
+  });
+});
 
 function status(progress) {
   state.running = !!progress.running;
@@ -512,6 +542,7 @@ $("refresh").addEventListener("click", async () => {
 });
 $("quit").addEventListener("click", async () => {
   try {
+    await themeSave;
     await request("quit", "POST");
     state.closed = true;
     $("as-of").textContent = "应用已退出。可关闭此页面，或双击程序重新打开。";

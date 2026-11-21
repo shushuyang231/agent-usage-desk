@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="classic" data-themes="classic">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,12 +7,14 @@
   <title>Agent Usage Desk · 本机用量</title>
   <link rel="icon" href="./icon.png" type="image/png">
   <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./themes.css">
   <script src="./app.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
     <div class="brand">
       <img src="./icon.png" width="36" height="36" alt="">
+      <span class="brand-art" aria-hidden="true"></span>
       <div><strong>Agent Usage</strong><small>DESK</small></div>
     </div>
     <nav aria-label="数据视图">
@@ -22,6 +24,15 @@
       <button class="nav-item" data-tab="sessions"><span class="glyph" aria-hidden="true">&#xE8BD;</span>会话</button>
     </nav>
     <div class="sidebar-bottom">
+      <label id="appearance" class="appearance" hidden>
+        <span class="appearance-label"><span class="glyph" aria-hidden="true">&#xE790;</span>界面主题</span>
+        <select id="theme" aria-label="界面主题">
+          <option value="classic">经典</option>
+          <option value="starlight">星弦</option>
+          <option value="flowers">花月</option>
+        </select>
+      </label>
+      <p id="appearance-status" class="appearance-status" role="status"></p>
       <details class="scope">
         <summary>统计口径</summary>
         <p>仅统计这台电脑上可读的会话。日期按 Windows 本地时区。输出含已记录的推理 token。</p>
@@ -32,8 +43,10 @@
     </div>
   </aside>
   <main>
-    <header class="top">
-      <div><h1 id="view-title">用量总览</h1><p id="as-of" role="status">正在读取本机数据…</p></div>
+    <header class="top" id="view-hero" data-view="overview">
+      <div class="hero-art" aria-hidden="true"></div>
+      <div class="hero-ornament" aria-hidden="true"></div>
+      <div class="hero-copy"><h1 id="view-title">用量总览</h1><p id="as-of" role="status">正在读取本机数据…</p></div>
       <div class="header-actions">
         <button id="clear" class="quiet" type="button">重置筛选</button>
         <button id="refresh" class="solid" type="button"><span class="glyph" aria-hidden="true">&#xE72C;</span>刷新数据</button>

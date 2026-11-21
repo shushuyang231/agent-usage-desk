@@ -16,6 +16,12 @@ internal sealed class DeskWindow : Form
     [DllImport("user32.dll")]
     private static extern uint GetDpiForSystem();
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref uint value, int size);
+
+    private const int CaptionColor = 35;
+    private const int CaptionTextColor = 36;
+
     private static readonly HttpClient Client = new HttpClient(new HttpClientHandler {
         UseProxy = false, AllowAutoRedirect = false
     }) { Timeout = TimeSpan.FromSeconds(2) };
@@ -95,8 +101,21 @@ internal sealed class DeskWindow : Form
             core.NewWindowRequested += (source, e) => { e.Handled = true; };
             core.PermissionRequested += (source, e) => { e.State = CoreWebView2PermissionState.Deny; };
             core.WebMessageReceived += (source, e) => {
-                if (InsideDashboard(e.Source) && e.WebMessageAsJson == "\"quit\"")
-                    BeginInvoke((Action)Close);
+                if (!InsideDashboard(e.Source)) return;
+                switch (e.WebMessageAsJson) {
+                    case "\"quit\"":
+                        BeginInvoke((Action)Close);
+                        break;
+                    case "\"theme:starlight\"":
+                        SetCaption(Color.FromArgb(31, 23, 31), Color.FromArgb(247, 234, 222));
+                        break;
+                    case "\"theme:flowers\"":
+                        SetCaption(Color.FromArgb(92, 41, 54), Color.FromArgb(255, 242, 231));
+                        break;
+                    case "\"theme:classic\"":
+                        SetCaption(Color.Empty, Color.Empty);
+                        break;
+                }
             };
             core.NavigationCompleted += (source, e) => {
                 if (e.IsSuccess) {
@@ -118,6 +137,20 @@ internal sealed class DeskWindow : Form
         {
             if (!IsDisposed) status.Text = "Windows 窗口初始化失败。请关闭此窗口后重新启动。";
         }
+    }
+
+    private void SetCaption(Color caption, Color text)
+    {
+        uint captionValue = CaptionValue(caption);
+        uint textValue = CaptionValue(text);
+        DwmSetWindowAttribute(Handle, CaptionColor, ref captionValue, sizeof(uint));
+        DwmSetWindowAttribute(Handle, CaptionTextColor, ref textValue, sizeof(uint));
+    }
+
+    private static uint CaptionValue(Color color)
+    {
+        if (color.IsEmpty || SystemInformation.HighContrast) return 0xFFFFFFFF;
+        return (uint)(color.R | color.G << 8 | color.B << 16);
     }
 
     private bool InsideDashboard(string target)
