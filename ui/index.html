@@ -57,6 +57,7 @@
         <button data-source="agy"><i class="dot agy"></i>Antigravity</button>
       </div>
       <label class="select-field range"><span>日期</span><select id="range">
+        <option value="today">今天</option><option value="yesterday">昨天</option><option value="week">本周</option>
         <option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option>
         <option value="90">最近 90 天</option><option value="all">全部历史</option>
         <option value="custom">自定义</option>
@@ -69,7 +70,7 @@
     </section>
     <section class="kpis" aria-label="关键指标">
       <article class="primary-kpi"><span>总 Token</span><strong id="total-tokens">—</strong><small id="tokens-info"></small></article>
-      <article><span>API 估算 <b>USD</b></span><strong id="total-cost">—</strong><small id="coverage"></small></article>
+      <article><span>API 估算 <b>USD</b></span><strong><button id="total-cost" class="cost-link" type="button" aria-haspopup="dialog" aria-controls="cost-dialog" disabled>—</button></strong><small id="coverage"></small></article>
       <article><span>缓存读取占比</span><strong id="cache-rate">—</strong><small id="cache-info"></small></article>
       <article><span>活跃会话</span><strong id="sessions-count">—</strong><small id="days-count"></small></article>
     </section>
@@ -111,8 +112,21 @@
       </table></div>
       <div class="table-foot"><span id="table-count"></span><div><button id="prev" class="quiet">上一页</button><span id="page-number"></span><button id="next" class="quiet">下一页</button></div></div>
     </section>
-    <footer><span>费用按标准 API 单价估算</span><span>·</span><span>价格表核对日期 2026-11-21</span></footer>
+    <footer><span>费用按标准 API 单价估算</span><span id="pricing-checked"></span></footer>
   </main>
+  <dialog id="cost-dialog" aria-labelledby="cost-title" aria-describedby="cost-scope">
+    <form method="dialog" class="cost-header">
+      <div><h2 id="cost-title">费用明细</h2><p id="cost-scope"></p></div>
+      <button class="quiet" type="submit" aria-label="关闭费用明细" autofocus><span class="glyph" aria-hidden="true">&#xE711;</span></button>
+    </form>
+    <dl class="cost-summary">
+      <div><dt>已计价金额</dt><dd id="cost-amount"></dd></div>
+      <div><dt>已计价 Token</dt><dd id="cost-priced"></dd></div>
+      <div><dt>缺价 Token</dt><dd id="cost-unpriced"></dd></div>
+    </dl>
+    <p id="cost-note"></p>
+    <div id="cost-rates" class="cost-rates"></div>
+  </dialog>
   <dialog id="theme-dialog" aria-labelledby="theme-title">
     <form method="dialog" class="appearance-header">
       <h2 id="theme-title">界面主题</h2>

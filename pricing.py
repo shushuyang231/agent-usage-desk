@@ -2,6 +2,14 @@
 
 from datetime import datetime
 import re
+from typing import NamedTuple
+
+PRICE_CHECKED_AT = "2026-11-21"
+PRICE_SOURCES = {
+    "openai": "https://developers.openai.com/api/docs/pricing",
+    "google": "https://ai.google.dev/gemini-api/docs/pricing",
+    "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+}
 
 # fresh input, cached read, cache write (short retention), output
 RATES = {
@@ -60,6 +68,20 @@ GEMINI_LONG = {
 }
 
 
+class Price(NamedTuple):
+    model: str | None
+    rates: tuple[float | None, ...]
+    threshold: int | None
+    long_context: bool
+    effective_from: str | None
+    effective_before: str | None
+
+    def estimate(self, amounts):
+        cost = sum(amount * rate for amount, rate in zip(amounts, self.rates) if rate is not None)
+        unpriced = sum(amount for amount, rate in zip(amounts, self.rates) if rate is None)
+        return cost / 1_000_000, unpriced
+
+
 def base_model(model):
     name = model.lower().strip().replace(" ", "-")
     name = re.sub(r"^(openai|anthropic|google|gemini|vertex_ai)/", "", name)
@@ -71,25 +93,35 @@ def base_model(model):
     )
 
 
-def estimate(event):
-    model = base_model(event.model)
-    if model in ("gpt-5-codex", "gpt-5.6"):
-        model = {"gpt-5-codex": "gpt-5", "gpt-5.6": "gpt-5.6-sol"}[model]
-    day = datetime.fromtimestamp(event.timestamp).date().isoformat()
+def price_for(label, day, input_tokens):
+    model = base_model(label)
+    model = {"gpt-5-codex": "gpt-5", "gpt-5.6": "gpt-5.6-sol"}.get(model, model)
     rates = RATES.get(model)
+    cutoff = None
     if model in ("gemini-4-argon", "gemini-4-carbon"):
-        rates = (2, .1, None, 10) if day < "2026-12-01" else (4, .2, None, 20)
+        cutoff = "2026-12-01"
+        rates = (2, .1, None, 10) if day < cutoff else (4, .2, None, 20)
     elif model in ("gemini-3.8-flash", "gemini-3.8-flash-n"):
-        rates = (.75, .075, None, 3.75) if day < "2027-01-01" else (1.5, .15, None, 7.5)
+        cutoff = "2027-01-01"
+        rates = (.75, .075, None, 3.75) if day < cutoff else (1.5, .15, None, 7.5)
     if rates is None:
-        return 0.0, event.fresh + event.read + event.write + event.output
-    size = event.fresh + event.read + event.write
-    if size > 272_000 and model in OPENAI_LONG:
-        rates = tuple(value * multiplier if value is not None else None
-                      for value, multiplier in zip(rates, (2, 2, 2, 1.5)))
-    if size > 200_000 and model in GEMINI_LONG:
-        rates = GEMINI_LONG[model]
+        return Price(None, (None,) * 4, None, False, None, None)
+    threshold = None
+    if model in OPENAI_LONG:
+        threshold = 272_000
+        if input_tokens > threshold:
+            rates = tuple(value * multiplier if value is not None else None
+                          for value, multiplier in zip(rates, (2, 2, 2, 1.5)))
+    elif model in GEMINI_LONG:
+        threshold = 200_000
+        if input_tokens > threshold:
+            rates = GEMINI_LONG[model]
+    return Price(model, rates, threshold, threshold is not None and input_tokens > threshold,
+                 cutoff if cutoff and day >= cutoff else None,
+                 cutoff if cutoff and day < cutoff else None)
+
+
+def estimate(event):
+    day = datetime.fromtimestamp(event.timestamp).date().isoformat()
     amounts = (event.fresh, event.read, event.write, event.output)
-    cost = sum(amount * rate for amount, rate in zip(amounts, rates) if rate is not None)
-    unpriced = sum(amount for amount, rate in zip(amounts, rates) if rate is None)
-    return cost / 1_000_000, unpriced
+    return price_for(event.model, day, sum(amounts[:3])).estimate(amounts)

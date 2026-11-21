@@ -13,14 +13,16 @@ const chartColors = {};
 const CHART_TYPE = '"Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif';
 const COLUMNS = {
   day: 0, source: 1, model: 2, project: 3, session: 4, fresh: 5, cache: 6,
-  write: 7, output: 8, reasoning: 9, cost: 10, unpriced: 11, calls: 12, approximate: 13,
+  write: 7, output: 8, reasoning: 9, cost: 10, unpriced: 11, calls: 12, approximate: 13, charges: 14,
 };
 const { day, source, model, project, session, fresh, cache, write, output, reasoning,
-  cost, unpriced, calls, approximate } = COLUMNS;
+  cost, unpriced, charges } = COLUMNS;
 const amount = (row) => row[fresh] + row[cache] + row[write] + row[output];
 const numberFormat = new Intl.NumberFormat("en-US");
 const formatInteger = (value) => numberFormat.format(value);
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const detailedUSD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 9 });
+const localDateTime = new Intl.DateTimeFormat("zh-CN", { dateStyle: "short", timeStyle: "short", hour12: false });
 const displayUSD = (value) => value > 0 && value < .005 ? "< $0.01" : usd.format(value);
 const percent = (fraction) => (fraction * 100).toFixed(1) + "%";
 const compact = (n) => {
@@ -33,7 +35,7 @@ const compact = (n) => {
 const state = {
   snapshot: null, source: "all", tab: "overview", metric: "tokens", session: "",
   sort: "tokens", reverse: true, page: 0, summaries: [], chart: [], focus: -1,
-  lastScan: "", running: false, closed: false,
+  lastScan: "", today: "", running: false, closed: false, progress: {}, report: null,
 };
 
 function element(tag, value = "", className = "") {
@@ -96,10 +98,15 @@ function syncFilters() {
   }
 }
 
-function windowDates(rows) {
-  const end = state.snapshot?.today || formatDate(new Date());
+function windowDates(rows, end) {
   const range = $("range").value;
   if (range === "custom") return [$("from").value || "2000-01-01", $("to").value || end];
+  if (range === "today") return [end, end];
+  if (range === "yesterday") {
+    const yesterday = shifted(end, -1);
+    return [yesterday, yesterday];
+  }
+  if (range === "week") return [shifted(end, -((dayDate(end).getDay() + 6) % 7)), end];
   if (range !== "all") return [shifted(end, 1 - Number(range)), end];
   if (!rows.length) return [end, end];
   const days = rows.map((row) => row[day]);
@@ -126,6 +133,10 @@ function costLabel(summary) {
   return displayUSD(summary.cost) + (summary.unpriced > 0 ? " *" : "");
 }
 
+function summaryDimension() {
+  return { projects: project, sessions: session }[state.tab] ?? model;
+}
+
 function render() {
   syncFilters();
   const [title, details, noun] = TAB[state.tab];
@@ -140,7 +151,8 @@ function render() {
     && (!$("model-filter").value || row[model] === $("model-filter").value)
     && (!$("project-filter").value || row[project] === $("project-filter").value)
     && (!state.session || row[session] === state.session));
-  const [start, end] = windowDates(dimensions);
+  state.today = formatDate(new Date());
+  const [start, end] = windowDates(dimensions, state.today);
   const rows = dimensions.filter((row) => row[day] >= start && row[day] <= end);
   const totals = emptySummary();
   const platforms = Object.fromEntries(Object.keys(SOURCES).map((id) => [id, emptySummary()]));
@@ -148,7 +160,7 @@ function render() {
   const sessions = new Set();
   const groups = new Map();
   const missingModels = new Set();
-  const dimension = state.tab === "projects" ? project : state.tab === "sessions" ? session : model;
+  const dimension = summaryDimension();
   for (const row of rows) {
     addRow(totals, row);
     addRow(platforms[row[source]], row);
@@ -159,8 +171,10 @@ function render() {
     if (!groups.has(key)) groups.set(key, { id: key, ...emptySummary() });
     addRow(groups.get(key), row);
   }
+  state.report = { rows, totals, platforms, start, end };
   setKPIs(totals, sessions, dates);
   renderSources(platforms, totals);
+  renderSourceHealth();
   renderNotice(totals, start, end, missingModels);
   for (const id of Object.keys(SOURCES)) $("legend-" + id).hidden = state.source !== "all" && state.source !== id;
   $("chart-caption").textContent = start <= end ? start + " 至 " + end + (state.metric === "cost" ? " · 仅累计有单价的用量" : "") : "";
@@ -177,7 +191,12 @@ function setKPIs(totals, sessions, dates) {
   const hasData = !!state.snapshot;
   $("total-tokens").textContent = hasData ? compact(totals.tokens) : "—";
   $("tokens-info").textContent = totals.tokens ? formatInteger(totals.tokens) + " tokens" : "";
-  $("total-cost").textContent = costLabel(totals);
+  const costButton = $("total-cost");
+  costButton.textContent = costLabel(totals);
+  costButton.disabled = !totals.tokens;
+  costButton.setAttribute("aria-label", "查看当前范围的费用明细 " + costButton.textContent);
+  const checked = state.snapshot?.pricing?.checkedAt;
+  $("pricing-checked").textContent = checked ? "· 价格表核对于 " + checked : "";
   $("coverage").textContent = totals.tokens
     ? "价格覆盖 " + percent((totals.tokens - totals.unpriced) / totals.tokens) : "";
   const input = totals.fresh + totals.cache + totals.write;
@@ -188,7 +207,7 @@ function setKPIs(totals, sessions, dates) {
 }
 
 function renderSources(platforms, totals) {
-  const parts = [], health = [element("strong", "文件读取状态")];
+  const parts = [];
   for (const [id, name] of Object.entries(SOURCES)) {
     const heading = element("div", "", "source-amount");
     const label = element("span");
@@ -205,17 +224,37 @@ function renderSources(platforms, totals) {
     const item = element("div");
     item.append(heading, bar);
     parts.push(item);
-    const scan = state.snapshot?.sources[id];
-    if (scan) {
-      const row = element("div", "", "health-row");
-      const detail = scan.files ? scan.read + " / " + scan.files + " 个" : "未发现记录";
-      row.append(element("span", name), element("small", detail));
-      if (scan.errors) row.append(element("small", scan.errors + " 个文件未更新", "health-warning"));
-      health.push(row);
-    }
   }
-  if (health.length === 1) health.push(element("div", "等待扫描"));
   $("source-composition").replaceChildren(...parts);
+}
+
+function renderSourceHealth() {
+  const health = [element("strong", "本机数据源")];
+  const attempt = state.progress.error ? state.progress.sources : null;
+  for (const [id, name] of Object.entries(SOURCES)) {
+    const scan = attempt?.[id] || state.snapshot?.sources[id];
+    const label = element("span", name);
+    const messages = [];
+    let detail = "等待首次扫描";
+    if (scan) {
+      if (scan.state === "missing") detail = "找不到数据目录";
+      else if (scan.state === "unreadable") detail = "目录读取失败";
+      else if (scan.files) detail = scan.read + " / " + scan.files + " 个文件";
+      else detail = scan.state === "ok" ? "目录内没有会话文件" : "未发现记录";
+      if (scan.errors) messages.push(scan.errors + " 个文件读取失败");
+      if (scan.retained) messages.push(scan.retained + " 个文件沿用旧结果");
+    }
+    const row = element("div", "", "health-row");
+    row.append(label, element("small", detail));
+    if (messages.length) row.append(element("small", messages.join(" · "), "health-warning"));
+    const scannedAt = scan?.scannedAt || (scan ? state.lastScan : "");
+    if (scannedAt) row.append(element("small", "扫描于 " + localDateTime.format(new Date(scannedAt)), "health-meta"));
+    if (scan?.files && !scan.errors && !attempt && (state.source === "all" || state.source === id)
+        && !state.report?.platforms[id].tokens) {
+      row.append(element("small", "当前筛选范围内无用量", "health-meta"));
+    }
+    health.push(row);
+  }
   $("source-health").replaceChildren(...health);
 }
 
@@ -298,8 +337,15 @@ function renderTable() {
       if (field === "cache") quantity.title = "另有缓存写入 " + formatInteger(item.write) + " tokens";
       row.append(quantity);
     }
-    const estimate = element("td", costLabel(item), "num" + (item.unpriced ? " partial" : ""));
-    if (item.unpriced) estimate.title = formatInteger(item.unpriced) + " tokens 缺价";
+    const estimate = element("td", "", "num" + (item.unpriced ? " partial" : ""));
+    const costButton = element("button", costLabel(item), "cost-link");
+    costButton.type = "button";
+    costButton.setAttribute("aria-haspopup", "dialog");
+    costButton.setAttribute("aria-controls", "cost-dialog");
+    costButton.setAttribute("aria-label", "查看 " + item.name + " 的费用明细 " + costButton.textContent);
+    if (item.unpriced) costButton.title = formatInteger(item.unpriced) + " tokens 缺价";
+    costButton.addEventListener("click", () => openCost(costButton, item));
+    estimate.append(costButton);
     row.append(estimate, element("td", item.latest, "num"));
     fragment.append(row);
   }
@@ -419,6 +465,110 @@ function chartFocus(index) {
   tooltip.style.left = Math.max(0, Math.min(width - tooltip.offsetWidth, x + 12)) + "px";
 }
 
+function costGroups(rows, plans) {
+  const groups = new Map();
+  for (const row of rows) {
+    for (const [id, ...counts] of row[charges]) {
+      const key = row[source] + ":" + id;
+      if (!groups.has(key)) groups.set(key, { plan: plans[id], source: row[source], amounts: [0, 0, 0, 0] });
+      const group = groups.get(key);
+      counts.forEach((count, i) => { group.amounts[i] += count; });
+    }
+  }
+  for (const group of groups.values()) {
+    group.cost = 0;
+    group.unpriced = 0;
+    group.priced = 0;
+    group.plan.rates.forEach((rate, i) => {
+      if (rate === null) group.unpriced += group.amounts[i];
+      else {
+        group.priced += group.amounts[i];
+        group.cost += group.amounts[i] * rate / 1e6;
+      }
+    });
+  }
+  return [...groups.values()].sort((a, b) => b.cost - a.cost || b.unpriced - a.unpriced);
+}
+
+function rateGroup(group, sources) {
+  const { plan, amounts } = group;
+  const details = element("details", "", "rate-group");
+  const summary = element("summary");
+  const text = element("span", "", "rate-model");
+  const name = plan.model || plan.recordedModel;
+  text.append(element("strong", name));
+  const subtitle = [SOURCES[group.source]];
+  if (plan.model && plan.recordedModel !== name) subtitle.push("记录模型 " + plan.recordedModel);
+  if (plan.threshold) subtitle.push(plan.longContext ? "长上下文" : "标准上下文");
+  text.append(element("small", subtitle.join(" · ")));
+  const value = element("span", "", "rate-value");
+  value.append(element("strong", group.priced ? detailedUSD.format(group.cost) : "—"));
+  if (group.unpriced) value.append(element("small", formatInteger(group.unpriced) + " Token 缺价", "partial"));
+  summary.append(text, value);
+
+  const table = element("table", "", "rate-table");
+  const head = table.createTHead().insertRow();
+  for (const [i, label] of ["计量类型", "Token", "单价 USD / 百万", "小计 USD"].entries()) {
+    const th = element("th", label, i ? "num" : "");
+    th.scope = "col";
+    head.append(th);
+  }
+  const body = table.createTBody();
+  for (const [i, label] of ["非缓存输入", "缓存读取", "缓存写入", "输出（含推理）"].entries()) {
+    const rate = plan.rates[i];
+    const row = body.insertRow();
+    row.append(element("td", label), element("td", formatInteger(amounts[i]), "num"),
+      element("td", rate === null ? "—" : detailedUSD.format(rate), "num"),
+      element("td", rate === null ? (amounts[i] ? "缺价" : "—") : detailedUSD.format(amounts[i] * rate / 1e6),
+        "num" + (rate === null && amounts[i] ? " partial" : "")));
+  }
+  const meta = element("div", "", "rate-meta");
+  if (plan.effectiveFrom) meta.append(element("span", plan.effectiveFrom + " 起适用"));
+  else if (plan.effectiveBefore) meta.append(element("span", plan.effectiveBefore + " 前适用"));
+  if (plan.threshold) meta.append(element("span", "单次输入 " + (plan.longContext ? "> " : "≤ ") + formatInteger(plan.threshold)));
+  if (!plan.model) meta.append(element("span", "内置价格表未匹配到计价模型"));
+  else {
+    const provider = name.startsWith("gemini-") ? "google" : name.startsWith("claude-") ? "anthropic" : "openai";
+    const link = element("a", "官方定价 ↗");
+    link.href = sources[provider];
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = "在默认浏览器打开";
+    meta.append(link);
+  }
+  details.append(summary, table, meta);
+  return details;
+}
+
+const costDialog = $("cost-dialog");
+let costOpener;
+
+function openCost(opener, item) {
+  const { rows, totals, start, end } = state.report;
+  const scope = item || totals;
+  const selected = item ? rows.filter((row) => row[summaryDimension()] === item.id) : rows;
+  const pricing = state.snapshot.pricing;
+  const timeRange = start === end ? start : start + " 至 " + end;
+  $("cost-scope").textContent = [item?.name || "当前筛选", SOURCES[state.source] || "全部来源", timeRange].join(" · ");
+  $("cost-amount").textContent = scope.unpriced === scope.tokens ? "—" : detailedUSD.format(scope.cost);
+  $("cost-priced").textContent = formatInteger(scope.tokens - scope.unpriced);
+  $("cost-unpriced").textContent = formatInteger(scope.unpriced);
+  $("cost-note").textContent = pricing
+    ? "小计 = Token × 单价 ÷ 1,000,000。标准文本 API 等价估算，价格表核对于 " + pricing.checkedAt + "。"
+    : "当前显示上次保存的报表。索引重建完成后，即可查看模型、单价和计费项。";
+  const groups = pricing ? costGroups(selected, pricing.plans).map((group) => rateGroup(group, pricing.sources)) : [];
+  if (groups.length) groups[0].open = true;
+  $("cost-rates").replaceChildren(...groups);
+  costOpener = opener;
+  costDialog.showModal();
+}
+
+$("total-cost").addEventListener("click", (event) => openCost(event.currentTarget));
+costDialog.addEventListener("close", () => {
+  const returnTo = costOpener?.isConnected ? costOpener : $("total-cost");
+  returnTo.focus({ preventScroll: true });
+});
+
 function exportCSV() {
   const label = TAB[state.tab][2];
   const columns = [label, "来源", "总 Token", "非缓存输入", "缓存读取", "缓存写入", "输出（含推理）", "推理",
@@ -508,14 +658,16 @@ for (const [theme, button] of themeChoices) {
 }
 
 function status(progress) {
+  state.progress = progress;
   state.running = !!progress.running;
   $("refresh").disabled = state.running || state.closed;
   $("quit").disabled = state.running || state.closed;
   const counts = progress.total ? " " + progress.done + " / " + progress.total + " 个文件" : "";
-  if (progress.running) $("as-of").textContent = "正在扫描本机日志…" + counts;
+  if (progress.running) $("as-of").textContent = (progress.rebuilding ? "正在重建索引，仍可查看旧报表…" : "正在扫描本机日志…") + counts;
   else if (progress.error) $("as-of").textContent = progress.error;
-  else if (state.lastScan) $("as-of").textContent = "更新于 " + new Date(state.lastScan).toLocaleString("zh-CN", { hour12: false });
+  else if (state.lastScan) $("as-of").textContent = "更新于 " + localDateTime.format(new Date(state.lastScan));
   else $("as-of").textContent = "等待首次扫描";
+  renderSourceHealth();
 }
 
 async function loadData() {
@@ -534,7 +686,10 @@ async function poll() {
     const reply = await request("status");
     if ((reply.scannedAt || "") !== state.lastScan || (state.running && !reply.progress.running))
       await loadData();
-    else status(reply.progress);
+    else {
+      status(reply.progress);
+      if (state.today && state.today !== formatDate(new Date())) render();
+    }
   } catch {
     $("as-of").textContent = "本地服务暂时无法连接，请重新打开应用。";
   }

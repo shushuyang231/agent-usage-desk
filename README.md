@@ -8,11 +8,19 @@ Agent Usage Desk 从两款应用的本地记录统计 token，按模型、项目
 
 ## 下载并打开
 
-1. 在 [最新发行页](https://github.com/shushuyang231/agent-usage-desk/releases/latest) 下载 Windows x64 便携版。当前版本为 [v0.4.1](https://github.com/shushuyang231/agent-usage-desk/releases/tag/v0.4.1)。
+1. 在 [最新发行页](https://github.com/shushuyang231/agent-usage-desk/releases/latest) 下载 Windows x64 便携版。
 2. 双击启动。程序会在独立窗口打开，并自动扫描本机已有的用量记录。首次扫描的耗时取决于记录数量。
 3. 选择 **Codex**、**Antigravity** 或 **全部**，再用日期、模型和项目缩小范围。
 
-需要 Windows 10 / 11 x64、.NET Framework 4.8 或更新的 4.x 版本，以及 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。这个版本采用便携单文件分发，当前没有数字签名。日常打开和刷新无需登录或提供 API Key。升级时先关闭旧版窗口，再打开新版。首次启动新版会重建本机用量索引。
+需要 Windows 10 / 11 x64、.NET Framework 4.8 或更新的 4.x 版本，以及 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。这个版本采用便携单文件分发，当前没有数字签名。日常打开和刷新无需登录或提供 API Key。升级时先关闭旧版窗口，再打开新版。索引重建期间仍可查看上次已保存的报表。
+
+## v0.5.0 更新
+
+- **点击金额查看费用明细。** 总览、模型、项目和会话的金额都可展开。明细列出记录中识别出的模型、对应计价模型、适用上下文档位，以及非缓存输入、缓存读取、缓存写入和输出的 Token、每百万单价与小计。
+- **缺价可以逐项检查。** 详情区分整款模型缺价和某类 Token 缺价，有日期区间的费率标明适用日期，并可打开供应商的定价页。
+- **重建索引时保留旧报表。** 新索引完整写入后才切换。重建遇到文件读取失败时，可检查来源并点击刷新重试。
+- **新增「今天」「昨天」「本周」筛选。** 本周从周一开始。来源面板显示各自的上次扫描时间，并区分目录缺失、读取失败和当前筛选内没有用量。
+- **公开 Windows 构建与测试。** GitHub Actions 用合成记录测试索引升级、去重和计价，并启动经典版 EXE 检查窗口交互及退出。工作流产物和正式发行附件各提供 SHA-256 校验值。[构建和测试记录](https://github.com/shushuyang231/agent-usage-desk/actions/workflows/windows.yml)
 
 ## v0.4.1 更新
 
@@ -53,6 +61,8 @@ Agent Usage Desk 从两款应用的本地记录统计 token，按模型、项目
 
 每条计量记录分别按非缓存输入、缓存读取、缓存写入和输出的适用标准费率折算。输出包含日志记录的推理 token。同一模型的思考档位在展示时合并，费用仍按原始计量记录计算后加总。支持分档的模型按单次输入量选择适用档位。估算采用 [内置价格表](pricing.py)，核对日期为 2026 年 11 月 21 日。供应商调整费率后，需要更新价格表。
 
+点击金额可逐项核对。小计以 Token 数乘每百万 Token 单价后除以 1,000,000。日期分段使用日志的 Windows 本地日期。对于价格表未收录生效日期的费率，明细显示价格表核对日期。
+
 - **金额带 `*`** 表示只有部分 token 有对应价格。价格覆盖率按 token 数计算。
 - **金额显示 `—`** 表示所选范围没有可计价用量。缺价 token 会保留在总量中，界面会列出对应模型名。
 - **API 估算** 表示用量按标准文本费率的等价金额。订阅实付、加速档、按小时计费的缓存存储以及单独计费的工具调用都在该估算范围之外。
@@ -79,6 +89,8 @@ $env:Path = "$(Resolve-Path '.venv\Scripts');$env:Path"
 脚本下载固定版本的官方 WebView2 SDK，使用 Windows 自带的 .NET Framework 编译器编译 WinForms 窗口，再用 PyInstaller 生成 `dist\` 下的便携 EXE。构建需要联网下载依赖。已有 SDK 包时可通过 `-WebViewPackage` 指定本地文件。
 
 使用仓库源码直接构建时可运行经典主题。插画主题读取 Git 忽略目录 `ui/local-art/` 下的授权素材，文件名为 `starlight.png`、`flowers.png`、`garden.jpg`、`daylight.jpg` 和 `ribbon.jpg`，界面缩略图位于该目录的 `previews/` 子目录。
+
+运行 `python -m unittest discover -s tests -v` 可检查读取、计价和索引升级。Windows 上可用 Node.js 24 运行 `node tests/smoke-windows.mjs <EXE 路径>` 验证便携包。可在 PowerShell 中用 `Get-FileHash -Algorithm SHA256 <EXE 路径>` 对照同一次发行或构建的 `SHA256SUMS.txt`。
 
 | 文件 | 职责 |
 | --- | --- |

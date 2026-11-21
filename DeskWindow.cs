@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net.Http;
@@ -21,6 +23,12 @@ internal sealed class DeskWindow : Form
 
     private const int CaptionColor = 35;
     private const int CaptionTextColor = 36;
+
+    private static readonly HashSet<string> PricingPages = new HashSet<string>(StringComparer.Ordinal) {
+        "https://developers.openai.com/api/docs/pricing",
+        "https://ai.google.dev/gemini-api/docs/pricing",
+        "https://platform.claude.com/docs/en/about-claude/pricing"
+    };
 
     private static readonly HttpClient Client = new HttpClient(new HttpClientHandler {
         UseProxy = false, AllowAutoRedirect = false
@@ -98,7 +106,16 @@ internal sealed class DeskWindow : Form
             core.Settings.IsPasswordAutosaveEnabled = false;
             core.Settings.IsGeneralAutofillEnabled = false;
             core.NavigationStarting += (source, e) => { if (!InsideDashboard(e.Uri)) e.Cancel = true; };
-            core.NewWindowRequested += (source, e) => { e.Handled = true; };
+            core.NewWindowRequested += (source, e) => {
+                e.Handled = true;
+                if (!e.IsUserInitiated || !PricingPages.Contains(e.Uri)) return;
+                try {
+                    Process.Start(new ProcessStartInfo(e.Uri) { UseShellExecute = true });
+                }
+                catch (System.ComponentModel.Win32Exception) {
+                    MessageBox.Show(this, "暂时无法打开默认浏览器。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            };
             core.PermissionRequested += (source, e) => { e.State = CoreWebView2PermissionState.Deny; };
             core.WebMessageReceived += (source, e) => {
                 if (!InsideDashboard(e.Source)) return;

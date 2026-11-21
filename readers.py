@@ -34,6 +34,7 @@ class Usage:
     output: int  # Includes reasoning
     reasoning: int
     approximate_date: bool = False
+    recorded_model: str = ""
 
 
 def timestamp(value):
@@ -65,24 +66,38 @@ def clean_model(value):
     return value.strip() if isinstance(value, str) and SAFE_MODEL.fullmatch(value.strip()) else ""
 
 
+def discovery_error(error):
+    raise error
+
+
 def discover_codex(root: Path):
     files = {}
     for archive_rank, folder in enumerate(("archived_sessions", "sessions")):
-        for path in (root / folder).rglob("rollout-*.jsonl*"):
-            if not path.name.endswith((".jsonl", ".jsonl.zst")) or not path.is_file():
-                continue
-            key = path.name.removesuffix(".zst")
-            rank = (archive_rank, path.suffix == ".jsonl", path.stat().st_mtime_ns)
-            if key not in files or rank > files[key][0]:
-                files[key] = (rank, path)
+        base = root / folder
+        if not base.is_dir():
+            continue
+        for directory, _, names in os.walk(base, onerror=discovery_error):
+            for name in names:
+                path = Path(directory) / name
+                if not path.match("rollout-*.jsonl*") or not name.endswith((".jsonl", ".jsonl.zst")):
+                    continue
+                if not path.is_file():
+                    continue
+                key = name.removesuffix(".zst")
+                rank = (archive_rank, path.suffix == ".jsonl", path.stat().st_mtime_ns)
+                if key not in files or rank > files[key][0]:
+                    files[key] = (rank, path)
     return [entry[1] for entry in files.values()]
 
 
 def discover_antigravity(root: Path):
     files = {}
     for folder in ("antigravity", "antigravity2", "antigravity-ide", "antigravity-cli", "antigravity-acp"):
-        for path in (root / folder / "conversations").glob("*.db"):
-            if not path.is_file():
+        directory = root / folder / "conversations"
+        if not directory.is_dir():
+            continue
+        for path in directory.iterdir():
+            if not path.match("*.db") or not path.is_file():
                 continue
             stat = path.stat()
             version = (stat.st_mtime_ns, stat.st_size)
@@ -329,6 +344,7 @@ class Generation:
     identity: set[tuple[int, str]]
     model: str
     stamp: float | None
+    recorded_model: str = ""
 
 
 def usage_fields(blob):
@@ -338,7 +354,7 @@ def usage_fields(blob):
     return numbers, {item for item in identities if item[1]}
 
 
-def generations(data, primary_key, retry_key, model, model_id, stamp, fallback):
+def generations(data, primary_key, retry_key, model, model_id, stamp, fallback, recorded_model=""):
     primary_blob = first(data, primary_key, bytes, b"")
     primary = usage_fields(primary_blob) if primary_blob else None
     retries = []
@@ -364,8 +380,11 @@ def generations(data, primary_key, retry_key, model, model_id, stamp, fallback):
         visible = max(visible, output - reasoning)
         reasoning = max(reasoning, output - visible)
         fallback_keys = fallback if primary and ordinal == 0 else set()
+        original = recorded_model if candidate == model else ""
+        if not original and identifier:
+            original = f"模型 ID {identifier}"
         yield Generation((inp, cached, written, visible, reasoning), keys or fallback_keys,
-                         candidate, stamp)
+                         candidate, stamp, original)
 
 
 def indices(values):
@@ -390,11 +409,15 @@ def dedupe_generations(items):
         else:
             index = matches[0]
             group = [slots[index], *(slots[k] for k in matches[1:]), item]
+            winner = max(group, key=lambda entry: model_rank(entry.model))
+            labels = [entry.recorded_model for entry in group if entry.model == winner.model and entry.recorded_model]
+            label = next((value for value in labels if not value.startswith("模型 ID ")), labels[0] if labels else "")
             item = Generation(
                 tuple(map(max, zip(*(entry.counts for entry in group)))),
                 set().union(*(entry.identity for entry in group)),
-                max((entry.model for entry in group), key=model_rank),
+                winner.model,
                 min((entry.stamp for entry in group if entry.stamp is not None), default=None),
+                label,
             )
             for position in matches[1:]:
                 slots[position] = None
@@ -454,7 +477,7 @@ def read_antigravity(path):
         concrete = ORCHESTRATOR_LABELS.get((label.lower(), display.lower()))
         model = concrete or ag_model(label or display, identifier)
         stamp = proto_time(message(message(data, 9), 4))
-        prepared.append((index, data, identifier, model, stamp, tuple(indices(row))))
+        prepared.append((index, data, identifier, model, stamp, tuple(indices(row)), clean_model(label or display)))
     recent_model = next((row[3] for row in reversed(prepared) if model_rank(row[3])), UNKNOWN_MODEL)
     items = []
     for index, blob in steps:
@@ -464,17 +487,18 @@ def read_antigravity(path):
         label = string(mi, 12) or string(mi, 8)
         model = ag_model(label, identifier) if (label or identifier) else recent_model
         stamp = proto_time(message(data, 8)) or proto_time(message(data, 1))
-        items.extend(generations(data, 9, 28, model, identifier, stamp, {(0, f"step:{index}")}))
+        items.extend(generations(data, 9, 28, model, identifier, stamp, {(0, f"step:{index}")}, clean_model(label)))
     current_model = UNKNOWN_MODEL
-    for index, data, identifier, model, stamp, linked in prepared:
+    for index, data, identifier, model, stamp, linked, label in prepared:
         if model_rank(model):
             current_model = model
         identities = {(0, f"step:{step}") for step in linked} or {(0, f"generation:{index}")}
-        items.extend(generations(data, 4, 17, current_model, identifier, stamp, identities))
+        items.extend(generations(data, 4, 17, current_model, identifier, stamp, identities,
+                                 label if current_model == model else ""))
     for event in dedupe_generations(items):
         inp, cached, written, visible, reasoning = event.counts
         yield Usage(event.stamp or start_stamp or file_stamp, event.model, project, path.stem,
-                    inp, cached, written, visible + reasoning, reasoning, not event.stamp)
+                    inp, cached, written, visible + reasoning, reasoning, not event.stamp, event.recorded_model)
 
 
 def titles(codex_root, antigravity_paths):
