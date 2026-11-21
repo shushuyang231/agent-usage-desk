@@ -37,7 +37,7 @@ jobs:
             "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$client",
             "HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$client"
           )
-          $installed = $keys | ForEach-Object { Get-ItemPropertyValue -LiteralPath $_ -Name pv -ErrorAction SilentlyContinue } |
+          $installed = $keys | ForEach-Object { if (Test-Path -LiteralPath $_) { (Get-Item -LiteralPath $_).GetValue('pv') } } |
             Where-Object { $_ -and $_ -ne '0.0.0.0' }
           if (!$installed) {
             $setup = Join-Path $env:RUNNER_TEMP MicrosoftEdgeWebview2Setup.exe
@@ -57,19 +57,22 @@ jobs:
           $port = $listener.LocalEndpoint.Port
           $listener.Stop()
           $env:AGENT_USAGE_TEST_WEBVIEW_PORT = "$port"
-          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
-          if (!(Test-Path -LiteralPath $policy)) { New-Item -Path $policy -Force | Out-Null }
-          $previous = Get-ItemPropertyValue -LiteralPath $policy -Name 'DeskWindow.exe' -ErrorAction SilentlyContinue
+          $policy = 'SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+          $key = [Microsoft.Win32.Registry]::LocalMachine.CreateSubKey($policy)
+          $appName = 'DeskWindow.exe'
+          $previous = $key.GetValue($appName)
+          $previousKind = if ($null -ne $previous) { $key.GetValueKind($appName) }
           try {
-            Set-ItemProperty -LiteralPath $policy -Name 'DeskWindow.exe' -Value "--remote-debugging-port=$port --remote-debugging-address=127.0.0.1"
+            $key.SetValue($appName, "--remote-debugging-port=$port --remote-debugging-address=127.0.0.1", 'String')
             node tests/smoke-windows.mjs .\dist\Agent-Usage-Desk-classic-windows-x64.exe
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally {
             if ($null -eq $previous) {
-              Remove-ItemProperty -LiteralPath $policy -Name 'DeskWindow.exe' -ErrorAction SilentlyContinue
+              $key.DeleteValue($appName, $false)
             } else {
-              Set-ItemProperty -LiteralPath $policy -Name 'DeskWindow.exe' -Value $previous
+              $key.SetValue($appName, $previous, $previousKind)
             }
+            $key.Dispose()
           }
       - name: Record the artifact checksum
         run: |
