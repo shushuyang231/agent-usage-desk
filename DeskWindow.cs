@@ -112,6 +112,15 @@ internal sealed class DeskWindow : Form
                     case "\"theme:flowers\"":
                         SetCaption(Color.FromArgb(92, 41, 54), Color.FromArgb(255, 242, 231));
                         break;
+                    case "\"theme:garden\"":
+                        SetCaption(Color.FromArgb(51, 66, 61), Color.FromArgb(251, 244, 228));
+                        break;
+                    case "\"theme:daylight\"":
+                        SetCaption(Color.FromArgb(25, 68, 75), Color.FromArgb(255, 241, 222));
+                        break;
+                    case "\"theme:ribbon\"":
+                        SetCaption(Color.FromArgb(61, 52, 75), Color.FromArgb(248, 239, 249));
+                        break;
                     case "\"theme:classic\"":
                         SetCaption(Color.Empty, Color.Empty);
                         break;

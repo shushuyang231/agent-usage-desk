@@ -23,14 +23,21 @@ HOST = UI.parent / "host" / "DeskWindow.exe"
 THEME_ART = {
     "starlight": "local-art/starlight.png",
     "flowers": "local-art/flowers.png",
+    "garden": "local-art/garden.jpg",
+    "daylight": "local-art/daylight.jpg",
+    "ribbon": "local-art/ribbon.jpg",
 }
+THEME_PREVIEWS = {theme: f"local-art/previews/{theme}.png" for theme in ("classic", *THEME_ART)}
 ASSETS = {
     "index.html": "text/html; charset=utf-8",
     "app.css": "text/css; charset=utf-8",
     "themes.css": "text/css; charset=utf-8",
+    "illustrations.css": "text/css; charset=utf-8",
+    "appearance.css": "text/css; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
     "icon.png": "image/png",
-    **dict.fromkeys(THEME_ART.values(), "image/png"),
+    **{image: "image/jpeg" if image.endswith(".jpg") else "image/png" for image in THEME_ART.values()},
+    **dict.fromkeys(THEME_PREVIEWS.values(), "image/png"),
 }
 
 
@@ -95,6 +102,7 @@ def load_theme(preference, themes):
 
 def handler_for(index, prefix, preference):
     themes = ("classic", *(name for name, image in THEME_ART.items() if (UI / image).is_file()))
+    previews = tuple(theme for theme in themes if (UI / THEME_PREVIEWS[theme]).is_file())
     theme_route = prefix + "api/theme/"
     preference_lock = threading.Lock()
 
@@ -128,6 +136,8 @@ def handler_for(index, prefix, preference):
                             b'data-theme="classic"', f'data-theme="{theme}"'.encode("ascii"), 1,
                         ).replace(
                             b'data-themes="classic"', f'data-themes="{" ".join(themes)}"'.encode("ascii"), 1,
+                        ).replace(
+                            b'data-theme-previews=""', f'data-theme-previews="{" ".join(previews)}"'.encode("ascii"), 1,
                         )
                     self.reply(content, ASSETS[target])
                 else:

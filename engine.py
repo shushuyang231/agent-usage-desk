@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import threading
 from collections import defaultdict
@@ -18,6 +19,19 @@ from readers import (
 )
 
 VERSION = 2
+MODEL_FAMILY = re.compile(r"^(?:(?:openai|anthropic|google|gemini|vertex_ai)/)?(?:gpt|o\d+|gemini|claude)-", re.I)
+MODEL_EFFORT = re.compile(
+    r"-(?:extra-(?:low|high)|x-?high|none|minimal|low|medium|high|(?:non-)?thinking)"
+    r"(?=$|-\d{4}-\d{2}-\d{2}$|-\d{8}$)", re.I,
+)
+GEMINI_ROUTING = re.compile(r"^((?:(?:google|gemini|vertex_ai)/)?gemini-(?:4-[a-z]+|3\.8-flash(?:-n)?))-tiered$", re.I)
+
+
+def display_model(label):
+    if not MODEL_FAMILY.match(label):
+        return label
+    label = MODEL_EFFORT.sub("", label)
+    return GEMINI_ROUTING.sub(r"\1", label)
 
 
 def json_data(value):
@@ -91,9 +105,14 @@ class UsageIndex:
         return self.make_snapshot(db, json.loads(stored[0]))
 
     def make_snapshot(self, db, metadata):
-        all_rows = combine_rows(
-            row for (raw,) in db.execute("SELECT rows FROM files") for row in json.loads(raw)
-        )
+        # Original index rows retain model labels and per-event pricing.
+        def display_rows():
+            for (raw,) in db.execute("SELECT rows FROM files"):
+                for row in json.loads(raw):
+                    row[2] = display_model(row[2])
+                    yield row
+
+        all_rows = combine_rows(display_rows())
         identified = [Path(path) for (path,) in db.execute("SELECT path FROM files WHERE source='agy'")]
         try:
             names = titles(self.codex_root, identified)

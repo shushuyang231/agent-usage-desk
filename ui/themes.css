@@ -79,7 +79,6 @@
 :root:not([data-theme="classic"]) .brand img { display: none; }
 :root:not([data-theme="classic"]) .brand strong { color: var(--side-text); }
 :root:not([data-theme="classic"]) .brand small,
-:root:not([data-theme="classic"]) .appearance-label .glyph,
 :root:not([data-theme="classic"]) .nav-item .glyph { color: var(--side-subtext); }
 :root:not([data-theme="classic"]) .sidebar,
 :root:not([data-theme="classic"]) .nav-item,
@@ -87,8 +86,7 @@
 :root:not([data-theme="classic"]) .appearance { color: var(--side-text); }
 :root:not([data-theme="classic"]) .nav-item:hover,
 :root:not([data-theme="classic"]) .sidebar-quit:hover:not(:disabled),
-:root:not([data-theme="classic"]) .nav-item.active,
-:root:not([data-theme="classic"]) .appearance select {
+:root:not([data-theme="classic"]) .nav-item.active {
   background: var(--side-active); color: var(--side-text); border-color: var(--side-line);
 }
 :root:not([data-theme="classic"]) .nav-item.active::before { background: var(--side-highlight); }

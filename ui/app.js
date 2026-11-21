@@ -246,7 +246,10 @@ function renderTable() {
   $("prev").disabled = state.page === 0;
   $("next").disabled = state.page + 1 >= pages;
   $("export").disabled = items.length === 0;
-  $("table-subtitle").textContent = state.tab === "sessions" ? "点会话查看它的用量趋势" : "点一行缩小统计范围";
+  $("table-subtitle").textContent = {
+    models: "同一模型的思考档位合并统计",
+    sessions: "点会话查看它的用量趋势",
+  }[state.tab] || "点一行缩小统计范围";
   for (const button of document.querySelectorAll("button[data-sort]"))
     button.parentElement.setAttribute("aria-sort", button.dataset.sort === state.sort ? (state.reverse ? "descending" : "ascending") : "none");
   const body = $("table-body");
@@ -439,8 +442,36 @@ async function request(path, method = "GET") {
   return response.json();
 }
 
+const themePicker = $("appearance");
+const themeDialog = $("theme-dialog");
+const availableThemes = new Set(root.dataset.themes.split(" "));
+const previewThemes = new Set(root.dataset.themePreviews.split(" "));
+const themeChoices = new Map();
+for (const button of themeDialog.querySelectorAll("[data-theme-choice]")) {
+  const id = button.dataset.themeChoice;
+  if (!availableThemes.has(id)) {
+    button.remove();
+    continue;
+  }
+  themeChoices.set(id, button);
+  const sample = button.querySelector(".theme-sample");
+  if (!previewThemes.has(id)) {
+    sample.hidden = true;
+    continue;
+  }
+  const image = new Image();
+  image.alt = "";
+  image.loading = "lazy";
+  image.src = "./local-art/previews/" + id + ".png";
+  sample.append(image);
+}
+
 function applyAppearance(theme) {
   root.dataset.theme = theme;
+  const name = themeChoices.get(theme).querySelector(".theme-name").textContent;
+  $("appearance-current").textContent = name;
+  themePicker.setAttribute("aria-label", "界面主题，当前：" + name);
+  for (const [id, button] of themeChoices) button.setAttribute("aria-pressed", String(id === theme));
   const style = getComputedStyle(root);
   for (const name of ["codex", "agy", "chart-axis", "chart-focus", "chart-grid", "chart-baseline"]) {
     chartColors[name] = style.getPropertyValue("--" + name).trim();
@@ -449,24 +480,24 @@ function applyAppearance(theme) {
   drawChart();
 }
 
-const themePicker = $("theme");
-const availableThemes = new Set(root.dataset.themes.split(" "));
-for (const option of [...themePicker.options]) {
-  if (!availableThemes.has(option.value)) option.remove();
-}
-themePicker.value = root.dataset.theme;
-$("appearance").hidden = availableThemes.size < 2;
-applyAppearance(themePicker.value);
+themePicker.hidden = themeChoices.size < 2;
+applyAppearance(root.dataset.theme);
 let themeSave = Promise.resolve();
-themePicker.addEventListener("change", () => {
-  const theme = themePicker.value;
-  if (!availableThemes.has(theme)) return;
-  applyAppearance(theme);
-  $("appearance-status").textContent = "";
-  themeSave = themeSave.then(() => request("theme/" + theme, "POST")).catch(() => {
-    if (themePicker.value === theme) $("appearance-status").textContent = "主题已切换，未能保存为默认。";
-  });
+themePicker.addEventListener("click", () => {
+  themeDialog.showModal();
+  themeChoices.get(root.dataset.theme).focus({ preventScroll: true });
 });
+themeDialog.addEventListener("close", () => themePicker.focus({ preventScroll: true }));
+for (const [theme, button] of themeChoices) {
+  button.addEventListener("click", () => {
+    applyAppearance(theme);
+    themeDialog.close();
+    $("appearance-status").textContent = "";
+    themeSave = themeSave.then(() => request("theme/" + theme, "POST")).catch(() => {
+      if (root.dataset.theme === theme) $("appearance-status").textContent = "主题已切换，未能保存为默认。";
+    });
+  });
+}
 
 function status(progress) {
   state.running = !!progress.running;

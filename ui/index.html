@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="classic" data-themes="classic">
+<html lang="zh-CN" data-theme="classic" data-themes="classic" data-theme-previews="">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +8,8 @@
   <link rel="icon" href="./icon.png" type="image/png">
   <link rel="stylesheet" href="./app.css">
   <link rel="stylesheet" href="./themes.css">
+  <link rel="stylesheet" href="./illustrations.css">
+  <link rel="stylesheet" href="./appearance.css">
   <script src="./app.js" defer></script>
 </head>
 <body>
@@ -24,14 +26,10 @@
       <button class="nav-item" data-tab="sessions"><span class="glyph" aria-hidden="true">&#xE8BD;</span>会话</button>
     </nav>
     <div class="sidebar-bottom">
-      <label id="appearance" class="appearance" hidden>
-        <span class="appearance-label"><span class="glyph" aria-hidden="true">&#xE790;</span>界面主题</span>
-        <select id="theme" aria-label="界面主题">
-          <option value="classic">经典</option>
-          <option value="starlight">星弦</option>
-          <option value="flowers">花月</option>
-        </select>
-      </label>
+      <button id="appearance" class="appearance" type="button" aria-haspopup="dialog" aria-controls="theme-dialog" hidden>
+        <span class="glyph" aria-hidden="true">&#xE790;</span><span class="appearance-label">界面主题</span>
+        <span id="appearance-current">经典</span><span class="appearance-arrow glyph" aria-hidden="true">&#xE70D;</span>
+      </button>
       <p id="appearance-status" class="appearance-status" role="status"></p>
       <details class="scope">
         <summary>统计口径</summary>
@@ -115,5 +113,23 @@
     </section>
     <footer><span>费用按标准 API 单价估算</span><span>·</span><span>价格表核对日期 2026-11-21</span></footer>
   </main>
+  <dialog id="theme-dialog" aria-labelledby="theme-title">
+    <form method="dialog" class="appearance-header">
+      <h2 id="theme-title">界面主题</h2>
+      <button class="quiet" type="submit" aria-label="关闭主题选择"><span class="glyph" aria-hidden="true">&#xE711;</span></button>
+    </form>
+    <div class="theme-choices" role="group" aria-label="选择主题">
+      <button type="button" data-theme-choice="classic"><span class="theme-sample" aria-hidden="true"></span><span class="theme-name">经典</span></button>
+      <button type="button" data-theme-choice="starlight"><span class="theme-sample" aria-hidden="true"></span><span class="theme-name">星弦</span></button>
+      <button type="button" data-theme-choice="flowers"><span class="theme-sample" aria-hidden="true"></span><span class="theme-name">花月</span></button>
+      <button type="button" data-theme-choice="garden"><span class="theme-sample" aria-hidden="true"></span><span class="theme-name">花窗</span></button>
+      <button type="button" data-theme-choice="daylight"><span class="theme-sample" aria-hidden="true"></span><span class="theme-name">晴巷</span></button>
+      <button type="button" data-theme-choice="ribbon"><span class="theme-sample" aria-hidden="true"></span><span class="theme-name">风绫</span></button>
+    </div>
+    <footer class="art-credit" aria-label="插画版权说明">
+      <p>插画主题的立绘与图像 © 成都水月雨科技有限公司 版权所有</p>
+      <p>已获授权用于非商业用途。</p>
+    </footer>
+  </dialog>
 </body>
 </html>
