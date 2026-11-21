@@ -147,10 +147,12 @@ function render() {
   const dates = new Set();
   const sessions = new Set();
   const groups = new Map();
+  const missingModels = new Set();
   const dimension = state.tab === "projects" ? project : state.tab === "sessions" ? session : model;
   for (const row of rows) {
     addRow(totals, row);
     addRow(platforms[row[source]], row);
+    if (row[unpriced]) missingModels.add(row[model]);
     sessions.add(row[session]);
     dates.add(row[day]);
     const key = row[dimension];
@@ -159,7 +161,7 @@ function render() {
   }
   setKPIs(totals, sessions, dates);
   renderSources(platforms, totals);
-  renderNotice(totals, start, end);
+  renderNotice(totals, start, end, missingModels);
   for (const id of Object.keys(SOURCES)) $("legend-" + id).hidden = state.source !== "all" && state.source !== id;
   $("chart-caption").textContent = start <= end ? start + " 至 " + end + (state.metric === "cost" ? " · 仅累计有单价的用量" : "") : "";
   $("trend-heading").textContent = state.metric === "cost" ? "每日费用估算" : "每日用量";
@@ -217,13 +219,19 @@ function renderSources(platforms, totals) {
   $("source-health").replaceChildren(...health);
 }
 
-function renderNotice(totals, start, end) {
+function renderNotice(totals, start, end, missingModels) {
   const messages = [];
   if (start > end) messages.push("开始日期晚于结束日期。");
-  if (totals.unpriced) messages.push(compact(totals.unpriced) + " tokens 缺少单价，费用只汇总已定价部分。");
+  const names = [...missingModels].sort();
+  if (totals.unpriced) {
+    const extra = names.length > 3 ? " 等 " + names.length + " 个模型" : "";
+    messages.push(compact(totals.unpriced) + " tokens 缺少单价（" + names.slice(0, 3).join("、") + extra + "）。费用只汇总已定价部分。");
+  }
   if (totals.approximate) messages.push(compact(totals.approximate) + " tokens 的日期使用会话或文件时间。");
-  $("notice").textContent = messages.join(" ");
-  $("notice").hidden = messages.length === 0;
+  const notice = $("notice");
+  notice.textContent = messages.join(" ");
+  notice.title = names.length > 3 ? names.join("、") : "";
+  notice.hidden = messages.length === 0;
 }
 
 function summaryList() {

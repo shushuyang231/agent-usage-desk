@@ -18,7 +18,7 @@ from readers import (
     read_antigravity, read_codex, titles,
 )
 
-VERSION = 2
+VERSION = 3
 MODEL_FAMILY = re.compile(r"^(?:(?:openai|anthropic|google|gemini|vertex_ai)/)?(?:gpt|o\d+|gemini|claude)-", re.I)
 MODEL_EFFORT = re.compile(
     r"-(?:extra-(?:low|high)|x-?high|none|minimal|low|medium|high|(?:non-)?thinking)"

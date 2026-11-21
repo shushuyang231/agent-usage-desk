@@ -46,8 +46,10 @@ Agent Usage Desk 从两款应用的本地记录统计 token，按模型、项目
 每条计量记录分别按非缓存输入、缓存读取、缓存写入和输出的适用标准费率折算。输出包含日志记录的推理 token。同一模型的思考档位在展示时合并，费用仍按原始计量记录计算后加总。支持分档的模型按单次输入量选择适用档位。估算采用 [内置价格表](pricing.py)，核对日期为 2026 年 11 月 21 日。供应商调整费率后，需要更新价格表。
 
 - **金额带 `*`** 表示只有部分 token 有对应价格。价格覆盖率按 token 数计算。
-- **金额显示 `—`** 表示所选范围没有可计价用量。缺价 token 会保留在总量中。
+- **金额显示 `—`** 表示所选范围没有可计价用量。缺价 token 会保留在总量中，界面会列出对应模型名。
 - **API 估算** 表示用量按标准文本费率的等价金额。订阅实付、加速档、按小时计费的缓存存储以及单独计费的工具调用都在该估算范围之外。
+
+Antigravity 的 Orchestrator 路由在逐次生成记录的技术标识与显示名称都能确认模型时，按对应规划或执行模型的公开费率折算。参见 [Google Antigravity 的模型文档](https://antigravity.google/docs/models#orchestrator)。
 
 参考 [OpenAI API 定价](https://developers.openai.com/api/docs/pricing)、[Gemini API 定价](https://ai.google.dev/gemini-api/docs/pricing) 和 [Claude API 定价](https://platform.claude.com/docs/en/about-claude/pricing)。
 

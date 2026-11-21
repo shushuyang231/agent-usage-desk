@@ -277,6 +277,12 @@ def proto_time(values):
     return seconds + first(values, 2, int, 0) / 1e9 if 1_000_000_000 < seconds < 4_200_000_000 else None
 
 
+ORCHESTRATOR_LABELS = {
+    ("gemini-flash-worker-agy", "gemini 4 hydrogen (orchestrator)"): "gemini-4-hydrogen",
+    ("gemini-pro-orchestrator-g1-pro", "orchestrator (argon)"): "gemini-4-argon",
+}
+
+
 MODEL_IDS = {
     246: "gemini-2.5-pro", 312: "gemini-2.5-flash", 313: "gemini-2.5-flash-thinking",
     329: "gemini-2.5-flash-thinking", 330: "gemini-2.5-flash-lite",
@@ -443,7 +449,10 @@ def read_antigravity(path):
         row = fields(blob)
         data = message(row, 1)
         identifier = first(data, 3, int, 0)
-        model = ag_model(string(data, 19) or string(data, 21), identifier)
+        label, display = string(data, 19), string(data, 21)
+        # A worker route can hide the underlying model. Require both labels.
+        concrete = ORCHESTRATOR_LABELS.get((label.lower(), display.lower()))
+        model = concrete or ag_model(label or display, identifier)
         stamp = proto_time(message(message(data, 9), 4))
         prepared.append((index, data, identifier, model, stamp, tuple(indices(row))))
     recent_model = next((row[3] for row in reversed(prepared) if model_rank(row[3])), UNKNOWN_MODEL)
