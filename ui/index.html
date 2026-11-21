@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#152b25">
+  <title>Agent Usage Desk · 本机用量</title>
+  <link rel="icon" href="./icon.png" type="image/png">
+  <link rel="stylesheet" href="./app.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="./icon.png" width="36" height="36" alt="">
+      <div><strong>Agent Usage</strong><small>DESK</small></div>
+    </div>
+    <nav aria-label="数据视图">
+      <button class="nav-item active" data-tab="overview"><span class="glyph" aria-hidden="true">&#xE9D2;</span>总览</button>
+      <button class="nav-item" data-tab="models"><span class="glyph" aria-hidden="true">&#xF2AE;</span>模型</button>
+      <button class="nav-item" data-tab="projects"><span class="glyph" aria-hidden="true">&#xE8B7;</span>项目</button>
+      <button class="nav-item" data-tab="sessions"><span class="glyph" aria-hidden="true">&#xE8BD;</span>会话</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <details class="scope">
+        <summary>统计口径</summary>
+        <p>仅统计这台电脑上可读的会话。日期按 Windows 本地时区。输出含已记录的推理 token。</p>
+        <p>费用按标准 API 文本单价折算。无单价部分标为缺价。用量日志缺少精确时间时使用会话时间或文件时间。</p>
+        <p>应用仅读取本地日志和计量数据库。网页、价格表和图表均在本机运行。</p>
+      </details>
+      <button id="quit" class="quiet sidebar-quit"><span class="glyph" aria-hidden="true">&#xF3B1;</span>退出应用</button>
+    </div>
+  </aside>
+  <main>
+    <header class="top">
+      <div><h1 id="view-title">用量总览</h1><p id="as-of" role="status">正在读取本机数据…</p></div>
+      <div class="header-actions">
+        <button id="clear" class="quiet" type="button">重置筛选</button>
+        <button id="refresh" class="solid" type="button"><span class="glyph" aria-hidden="true">&#xE72C;</span>刷新数据</button>
+      </div>
+    </header>
+    <section class="filters" aria-label="筛选">
+      <div class="source-picker" role="group" aria-label="数据来源">
+        <button data-source="all" class="active">全部</button>
+        <button data-source="codex"><i class="dot codex"></i>Codex</button>
+        <button data-source="agy"><i class="dot agy"></i>Antigravity</button>
+      </div>
+      <label class="select-field range"><span>日期</span><select id="range">
+        <option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option>
+        <option value="90">最近 90 天</option><option value="all">全部历史</option>
+        <option value="custom">自定义</option>
+      </select></label>
+      <label class="select-field custom-date" hidden><span>起日</span><input type="date" id="from"></label>
+      <label class="select-field custom-date" hidden><span>止日</span><input type="date" id="to"></label>
+      <label class="select-field"><span>模型</span><select id="model-filter"><option value="">全部模型</option></select></label>
+      <label class="select-field"><span>项目</span><select id="project-filter"><option value="">全部项目</option></select></label>
+      <button id="session-filter" class="quiet" hidden></button>
+    </section>
+    <section class="kpis" aria-label="关键指标">
+      <article class="primary-kpi"><span>总 Token</span><strong id="total-tokens">—</strong><small id="tokens-info"></small></article>
+      <article><span>API 估算 <b>USD</b></span><strong id="total-cost">—</strong><small id="coverage"></small></article>
+      <article><span>缓存读取占比</span><strong id="cache-rate">—</strong><small id="cache-info"></small></article>
+      <article><span>活跃会话</span><strong id="sessions-count">—</strong><small id="days-count"></small></article>
+    </section>
+    <section class="overview-grid" id="overview-grid">
+      <article class="panel trend">
+        <header class="panel-heading"><div><h2 id="trend-heading">每日用量</h2><p id="chart-caption" class="chart-caption"></p></div>
+          <div class="metric-picker" role="group" aria-label="图表指标"><button data-metric="tokens" class="active">Token</button><button data-metric="cost">估算 USD</button></div>
+        </header>
+        <div class="chart-wrap">
+          <canvas id="chart" tabindex="0" aria-label="每日用量图。左右方向键逐日查看"></canvas>
+          <div class="chart-tooltip" id="chart-tip" hidden></div>
+        </div>
+        <div class="legend"><span id="legend-codex"><i class="dot codex"></i>Codex</span><span id="legend-agy"><i class="dot agy"></i>Antigravity</span></div>
+      </article>
+      <article class="panel sources">
+        <header class="panel-heading"><div><h2>来源分布</h2><p>按总 Token 计算</p></div></header>
+        <div id="source-composition" class="composition"></div>
+        <div id="source-health" class="source-health"></div>
+      </article>
+    </section>
+    <div id="notice" class="notice" aria-live="polite" hidden></div>
+    <section class="panel details">
+      <header class="panel-heading">
+        <div><h2 id="table-title">模型明细</h2><p id="table-subtitle"></p></div>
+        <div class="table-actions">
+          <input id="search" type="search" aria-label="搜索明细" placeholder="搜索明细">
+          <button id="export" class="quiet"><span class="glyph" aria-hidden="true">&#xE896;</span>导出 CSV</button>
+        </div>
+      </header>
+      <div class="table-scroll"><table>
+        <thead><tr>
+          <th id="entity-head" scope="col">模型</th><th scope="col" class="num"><button data-sort="tokens">总 Token</button></th>
+          <th scope="col" class="num"><button data-sort="fresh">非缓存输入</button></th>
+          <th scope="col" class="num"><button data-sort="cache">缓存读取</button></th>
+          <th scope="col" class="num"><button data-sort="output">输出</button></th>
+          <th scope="col" class="num"><button data-sort="cost">估算 USD</button></th><th scope="col" class="num"><button data-sort="latest">最近活动</button></th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table></div>
+      <div class="table-foot"><span id="table-count"></span><div><button id="prev" class="quiet">上一页</button><span id="page-number"></span><button id="next" class="quiet">下一页</button></div></div>
+    </section>
+    <footer><span>费用按标准 API 单价估算</span><span>·</span><span>价格表核对日期 2026-11-21</span></footer>
+  </main>
+</body>
+</html>
